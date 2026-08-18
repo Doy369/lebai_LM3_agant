@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lebai-vision-agent"
+version = "0.2.0"
+description = "Safety-first RGB-D and vision-language robotic manipulation system"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26,<3",
+  "opencv-python>=4.10,<5",
+]
+
+[project.optional-dependencies]
+web = [
+  "fastapi>=0.115,<0.139",
+  "uvicorn>=0.30,<0.52",
+  "pydantic>=2.7,<3",
+]
+dev = [
+  "fastapi>=0.115,<0.139",
+  "uvicorn>=0.30,<0.52",
+  "pydantic>=2.7,<3",
+  "httpx>=0.27,<0.29",
+]
+hardware = [
+  "pygrabber>=0.2",
+  "WMI>=1.5",
+  "lebai_sdk>=0.3.7",
+  "pyorbbecsdk2==2.0.18",
+]
+
+[project.scripts]
+lebai-collect-calibration = "apps.calibration.collect_data:main"
+lebai-solve-calibration = "apps.calibration.solve_eye_to_hand:main"
+lebai-auto-calibrate = "apps.calibration.auto_calibrate:main"
+lebai-validate-calibration = "apps.calibration.validate_eye_to_hand:main"
+lebai-qwen-demo = "apps.demos.qwen_planning:main"
+lebai-vision-demo = "apps.demos.vision_language_pipeline:main"
+lebai-controller-demo = "apps.demos.controller_dry_run:main"
+lebai-pick-demo = "apps.demos.full_pick_pipeline:main"
+lebai-safety-probe = "apps.robot.safety_probe:main"
+lebai-two-stage-test = "apps.robot.two_stage_pick:main"
+lebai-web = "apps.web.serve:main"
+lebai-list-cameras = "tools.list_cameras:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps*", "robot_system*", "tools*", "world_model_experiment*"]
+
+[tool.setuptools.package-data]
+robot_system = ["web/static/*.html", "web/static/*.js", "web/static/*.css"]
+world_model_experiment = ["config/*.json"]

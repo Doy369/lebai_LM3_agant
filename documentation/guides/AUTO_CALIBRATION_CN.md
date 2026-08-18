@@ -2,7 +2,7 @@
 
 自动标定前请先把标定板刚性固定在夹爪上，并把机械臂移动到“棋盘格已经在相机画面中央附近”的安全初始姿态。
 
-系统会围绕当前 TCP 姿态做小范围平移和倾角扰动，逐帧检查棋盘格，采集成功后自动调用 `02_calibrate.py` 求解。
+系统会围绕当前 TCP 姿态做小范围平移和倾角扰动，逐帧检查棋盘格，采集成功后直接调用 `robot_system.calibration.eye_to_hand_solver` 求解，不再依赖脚本文件名。
 
 ## 命令行运行
 
@@ -10,13 +10,13 @@
 Set-Location <project-directory>
 $env:LEBAI_DRY_RUN="0"
 $env:LEBAI_ROBOT_IP="127.0.0.1"
-python .\11_auto_calibration.py --allow-real-motion --samples 20 --min-success 12 --settle-sec 0.8
+lebai-auto-calibrate --allow-real-motion --samples 20 --min-success 12 --settle-sec 0.8
 ```
 
 只预览自动姿态计划，不运动：
 
 ```powershell
-python .\11_auto_calibration.py --plan-only --samples 20
+lebai-auto-calibrate --plan-only --samples 20
 ```
 
 ## Web 控制台

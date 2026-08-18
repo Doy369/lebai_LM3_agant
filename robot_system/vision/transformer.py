@@ -23,7 +23,7 @@ class CalibrationBundle:
 
     @classmethod
     def from_file(cls, path: str | Path) -> "CalibrationBundle":
-        """从 `02_calibrate.py` 导出的 JSON 中读取标定数据。"""
+        """从 Eye-to-Hand 标定求解器导出的 JSON 中读取标定数据。"""
         calibration_path = Path(path)
         with calibration_path.open("r", encoding="utf-8") as file:
             payload = json.load(file)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 import math
 import os
@@ -14,6 +13,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
+from . import eye_to_hand_solver as calibration_solver
 from robot_system.control import LebaiController, WorkspaceBox
 from robot_system.llm.types import Pose3D
 from robot_system.vision import CalibrationBundle, OrbbecDepthCamera
@@ -60,7 +60,7 @@ class AutoCalibrationConfig:
 
 
 class AutoCalibrationRunner:
-    """Run safe automatic data collection and then reuse 02_calibrate.py."""
+    """Run safe automatic data collection and reuse the calibration solver module."""
 
     def __init__(
         self,
@@ -330,24 +330,19 @@ class AutoCalibrationRunner:
         attempt["rejected_json_file"] = str(Path("rejected") / json_name)
 
     def _run_calibration(self, session_dir: Path) -> Dict[str, Any]:
-        project_root = Path(__file__).resolve().parents[2]
-        script_path = project_root / "02_calibrate.py"
-        spec = importlib.util.spec_from_file_location("auto_calibrate_script", script_path)
-        if spec is None or spec.loader is None:
-            raise RuntimeError(f"无法加载标定脚本: {script_path}")
-
         output_dir = Path(self.config.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / "eye_to_hand_result.json"
         with tempfile.TemporaryDirectory(prefix=".auto_calibration_", dir=str(output_dir)) as temp_dir:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            module.DATA_DIR = Path(session_dir)
-            module.OUTPUT_DIR = Path(temp_dir)
-            return_code = int(module.main_v2())
+            return_code = int(
+                calibration_solver.main_v2(
+                    data_dir=Path(session_dir),
+                    output_dir=Path(temp_dir),
+                )
+            )
             staged_output = Path(temp_dir) / "eye_to_hand_result.json"
             if return_code != 0:
-                raise RuntimeError(f"02_calibrate.py 标定失败，return_code={return_code}。")
+                raise RuntimeError(f"手眼标定求解失败，return_code={return_code}。")
             if not staged_output.exists():
                 raise RuntimeError("标定脚本返回成功，但没有生成 eye_to_hand_result.json。")
             CalibrationBundle.from_file(staged_output)
