@@ -1,0 +1,43 @@
+# Python
+.venv/
+.test-venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Runtime logs and temporary files
+Log/
+logs/
+artifacts/
+*.log
+*.zip
+backend*_stdout.log
+backend*_stderr.log
+tmp_*.log
+tmp_camera_probe/
+
+# Local calibration/session data
+calib_data/
+latest_plan_debug.jpg
+lebai-baseline-*.zip
+biaoding/web_runtime_state.json
+
+# Private local configuration and credentials
+.env
+.env.*
+!.env.example
+*.private.json
+
+# Personal documents and device-specific exports
+*.docx
+课程论文_*
+CameraParam_Orbbec*
+!CameraParam_Orbbec.example.ini
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

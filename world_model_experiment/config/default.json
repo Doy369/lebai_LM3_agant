@@ -1,0 +1,22 @@
+{
+  "uncertainty_weights": {
+    "semantic": 0.3,
+    "depth": 0.25,
+    "calibration": 0.2,
+    "motion": 0.25
+  },
+  "success_weights": {
+    "semantic": 0.25,
+    "depth": 0.2,
+    "calibration": 0.15,
+    "motion": 0.4
+  },
+  "reobserve_uncertainty_threshold": 0.45,
+  "probe_uncertainty_threshold": 0.22,
+  "execute_success_threshold": 0.72,
+  "collision_reject_threshold": 0.35,
+  "minimum_workspace_margin_m": 0.015,
+  "minimum_clearance_m": 0.01,
+  "minimum_joint_margin_rad": 0.08,
+  "minimum_singularity_margin_rad": 0.1
+}

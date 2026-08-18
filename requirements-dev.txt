@@ -1,0 +1,3 @@
+-r requirements-core.txt
+-r requirements-web.txt
+httpx>=0.27,<0.29

@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lebai Robot Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Lebai + Orbbec + Qwen3.5-Plus</p>
+          <h1>机器人抓取控制台</h1>
+          <p class="hero-copy">
+            主流程已经切换成“当前 RGB+Depth 画面 -> Qwen 识别目标 -> 深度转 Base 坐标 -> 安全探测 / 完整抓取”。
+            默认采用手动使能模式：请先在乐白官方界面使能，再回到本页执行动作。
+          </p>
+        </div>
+        <div class="hero-actions">
+          <label class="field compact">
+            <span>后端地址</span>
+            <input id="apiBaseInput" type="text" />
+          </label>
+          <label class="field compact">
+            <span>控制令牌（仅保存在当前浏览器会话）</span>
+            <input id="controlTokenInput" type="password" autocomplete="off" />
+          </label>
+          <div class="pill-row">
+            <span id="backendStatusPill" class="status-pill neutral">后端未连接</span>
+            <span id="robotStatusPill" class="status-pill neutral">机器人状态未知</span>
+            <span id="robotSafetyPill" class="status-pill neutral">等待状态检查</span>
+          </div>
+          <div class="hero-buttons">
+            <button id="refreshOverviewButton" class="button button-primary">刷新总览</button>
+            <button id="loadCameraExampleButton" class="button button-ghost">载入当前画面示例</button>
+            <button id="loadExampleButton" class="button button-ghost">载入 JSON 调试示例</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-grid">
+        <section class="panel panel-wide">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Overview</p>
+              <h2>系统总览</h2>
+            </div>
+            <label class="checkbox-row">
+              <input id="autoRefreshToggle" type="checkbox" />
+              <span>自动刷新状态与相机预览</span>
+            </label>
+          </div>
+          <div class="overview-grid">
+            <article class="status-card">
+              <p class="status-label">服务健康</p>
+              <strong id="healthSummary">等待读取</strong>
+              <pre id="healthDetail" class="mini-pre"></pre>
+            </article>
+            <article class="status-card">
+              <p class="status-label">标定状态</p>
+              <strong id="calibrationSummary">等待读取</strong>
+              <pre id="calibrationDetail" class="mini-pre"></pre>
+            </article>
+            <article class="status-card">
+              <p class="status-label">机器人状态</p>
+              <strong id="robotSummary">等待读取</strong>
+              <pre id="robotDetail" class="mini-pre"></pre>
+            </article>
+            <article class="status-card">
+              <p class="status-label">相机状态</p>
+              <strong id="cameraSummary">等待读取</strong>
+              <pre id="cameraDetail" class="mini-pre"></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel panel-camera">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Live View</p>
+              <h2>当前相机画面</h2>
+            </div>
+            <button id="refreshCalibrationButton" class="button button-ghost">刷新相机与标定</button>
+          </div>
+          <div class="camera-stack">
+            <article class="camera-card">
+              <p class="status-label">实时 RGB 预览</p>
+              <div class="camera-frame">
+                <img id="cameraImage" alt="实时相机预览" />
+                <span id="cameraPlaceholderText">等待实时相机画面</span>
+              </div>
+            </article>
+            <article class="camera-card">
+              <p class="status-label">最近一次抓取规划快照</p>
+              <div class="camera-frame">
+                <img id="planImage" alt="最近一次抓取规划快照" />
+                <span id="planPlaceholderText">尚未生成当前画面抓取规划</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Calibration</p>
+              <h2>自动手眼标定</h2>
+            </div>
+            <button id="autoCalibrationPlanButton" class="button button-ghost">预览计划</button>
+          </div>
+
+          <div class="control-group">
+            <p class="control-title">自动采样参数</p>
+            <div class="field-row">
+              <label class="field compact">
+                <span>计划姿态数</span>
+                <input id="autoCalibSampleCountInput" type="number" step="1" value="20" />
+              </label>
+              <label class="field compact">
+                <span>最少有效样本</span>
+                <input id="autoCalibMinSuccessInput" type="number" step="1" value="12" />
+              </label>
+              <label class="field compact">
+                <span>到位等待 (s)</span>
+                <input id="autoCalibSettleInput" type="number" step="0.1" value="0.8" />
+              </label>
+            </div>
+            <label class="field">
+              <span>会话名称</span>
+              <input id="autoCalibSessionInput" type="text" placeholder="留空自动生成 auto_时间戳" />
+            </label>
+            <label class="checkbox-row">
+              <input id="autoCalibRunCalibrationToggle" type="checkbox" checked />
+              <span>采样完成后立即运行标定求解</span>
+            </label>
+          </div>
+
+          <div class="button-grid">
+            <button id="autoCalibrationRunButton" class="button button-warning" data-requires-motion="true">运行自动标定</button>
+          </div>
+        </section>
+
+        <section class="panel panel-main">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Main Flow</p>
+              <h2>当前画面抓取</h2>
+            </div>
+            <button id="clearResultButton" class="button button-ghost">清空结果</button>
+          </div>
+
+          <label class="field">
+            <span>自然语言指令</span>
+            <textarea id="commandInput" rows="2">抓取红色杯子</textarea>
+          </label>
+
+          <div class="field-row">
+            <label class="field compact">
+              <span>探测保留高度 (m)</span>
+              <input id="probeClearanceInput" type="number" step="0.005" value="0.05" />
+            </label>
+            <label class="field compact">
+              <span>探测 / 抓取前悬停 (m)</span>
+              <input id="probeHoverOffsetInput" type="number" step="0.005" value="0.08" />
+            </label>
+          </div>
+
+          <div class="control-group">
+            <p class="control-title">完整抓取联调参数</p>
+            <div class="field-row">
+              <label class="field compact">
+                <span>抓取前悬停 (m)</span>
+                <input id="pickPreOffsetInput" type="number" step="0.005" value="0.08" />
+              </label>
+              <label class="field compact">
+                <span>抓取后抬升 (m)</span>
+                <input id="pickPostOffsetInput" type="number" step="0.005" value="0.10" />
+              </label>
+              <label class="field compact">
+                <span>放置前悬停 (m)</span>
+                <input id="placePreOffsetInput" type="number" step="0.005" value="0.10" />
+              </label>
+              <label class="field compact">
+                <span>放置后撤离 (m)</span>
+                <input id="placePostOffsetInput" type="number" step="0.005" value="0.10" />
+              </label>
+            </div>
+            <div class="field-row">
+              <label class="field compact">
+                <span>放置点 X (m)</span>
+                <input id="dropXInput" type="number" step="0.001" value="-0.30" />
+              </label>
+              <label class="field compact">
+                <span>放置点 Y (m)</span>
+                <input id="dropYInput" type="number" step="0.001" value="-0.22" />
+              </label>
+              <label class="field compact">
+                <span>放置点 Z (m)</span>
+                <input id="dropZInput" type="number" step="0.001" value="0.15" />
+              </label>
+              <label class="field compact">
+                <span>放置点 Yaw (rad)</span>
+                <input id="dropYawInput" type="number" step="0.01" value="0.0" />
+              </label>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>场景上下文 JSON</span>
+            <textarea id="sceneContextInput" rows="4">{}</textarea>
+          </label>
+
+          <div class="button-grid triple">
+            <button id="planFromCameraButton" class="button button-primary">抓取当前画面目标并规划</button>
+            <button id="probeFromCameraButton" class="button button-secondary">执行当前画面安全探测</button>
+            <button id="pickFromCameraButton" class="button button-warning">执行当前画面完整抓取</button>
+          </div>
+          <p class="hint">完整抓取必须先完成安全探测，并在一次性探测锁有效期内执行。</p>
+
+          <div class="result-stack">
+            <article class="result-card">
+              <p class="status-label">最近结果摘要</p>
+              <strong id="resultSummary">尚未执行动作</strong>
+              <pre id="resultDetail" class="result-pre"></pre>
+            </article>
+            <article class="result-card">
+              <p class="status-label">最近一次快照结果</p>
+              <pre id="snapshotDetail" class="result-pre"></pre>
+            </article>
+            <article class="result-card">
+              <p class="status-label">聊天记录</p>
+              <div id="chatFeed" class="chat-feed"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Robot</p>
+              <h2>控制面板</h2>
+            </div>
+            <button id="refreshRobotButton" class="button button-ghost">刷新机器人状态</button>
+          </div>
+
+          <div class="control-group">
+            <p class="control-title">系统与示教</p>
+            <div class="button-grid">
+              <button id="startRobotButton" class="button button-primary">启动机械臂</button>
+              <button id="recordHomeButton" class="button button-secondary">记录当前位置为 Home</button>
+              <button id="enterTeachModeButton" class="button button-secondary" data-requires-motion="true">进入示教模式</button>
+              <button id="exitTeachModeButton" class="button button-ghost">退出示教模式</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <p class="control-title">高优先级控制</p>
+            <div class="button-grid">
+              <button id="emergencyStopButton" class="button button-danger">急停</button>
+              <button id="stopMotionButton" class="button button-warning">停止运动</button>
+              <button id="resetRobotButton" class="button button-secondary" data-requires-motion="true">复位到 Home</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <p class="control-title">夹爪控制</p>
+            <div class="button-grid">
+              <button id="openGripperButton" class="button button-secondary" data-requires-motion="true">张开夹爪</button>
+              <button id="closeGripperButton" class="button button-secondary" data-requires-motion="true">闭合夹爪</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <p class="control-title">Jog 点动</p>
+            <div class="field-row">
+              <label class="field compact">
+                <span>平移步长 (m)</span>
+                <input id="linearStepInput" type="number" step="0.001" value="0.01" />
+              </label>
+              <label class="field compact">
+                <span>旋转步长 (rad)</span>
+                <input id="rotateStepInput" type="number" step="0.01" value="0.05" />
+              </label>
+            </div>
+            <div class="jog-grid">
+              <button class="button button-ghost" data-jog="x+" data-kind="linear" data-requires-motion="true">+X</button>
+              <button class="button button-ghost" data-jog="x-" data-kind="linear" data-requires-motion="true">-X</button>
+              <button class="button button-ghost" data-jog="y+" data-kind="linear" data-requires-motion="true">+Y</button>
+              <button class="button button-ghost" data-jog="y-" data-kind="linear" data-requires-motion="true">-Y</button>
+              <button class="button button-ghost" data-jog="z+" data-kind="linear" data-requires-motion="true">+Z</button>
+              <button class="button button-ghost" data-jog="z-" data-kind="linear" data-requires-motion="true">-Z</button>
+              <button class="button button-ghost" data-jog="rz+" data-kind="rotate" data-requires-motion="true">+Yaw</button>
+              <button class="button button-ghost" data-jog="rz-" data-kind="rotate" data-requires-motion="true">-Yaw</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel panel-log">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Advanced Debug</p>
+              <h2>高级 JSON 调试与日志</h2>
+            </div>
+            <button id="clearLogButton" class="button button-ghost">清空日志</button>
+          </div>
+
+          <details class="debug-details">
+            <summary>打开传统 detections JSON 调试入口</summary>
+            <div class="debug-stack">
+              <label class="field">
+                <span>检测结果 JSON</span>
+                <textarea id="detectionsInput" rows="10"></textarea>
+              </label>
+              <div class="button-grid triple">
+                <button id="planPickButton" class="button button-ghost">用 JSON 生成决策</button>
+                <button id="probeButton" class="button button-ghost">用 JSON 执行探测</button>
+                <button id="pickButton" class="button button-ghost">用 JSON 执行抓取</button>
+              </div>
+            </div>
+          </details>
+
+          <div id="eventLog" class="log-feed"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

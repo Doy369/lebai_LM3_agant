@@ -1,0 +1,4 @@
+pygrabber>=0.2
+WMI>=1.5
+lebai_sdk>=0.3.7
+pyorbbecsdk2==2.0.18
