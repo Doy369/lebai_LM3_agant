@@ -34,10 +34,18 @@ biaoding/web_runtime_state.json
 *.docx
 课程论文_*
 CameraParam_Orbbec*
-!CameraParam_Orbbec.example.ini
+configs/camera/*.local.ini
 
 # OS/editor noise
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+
+# Packaging and test artifacts
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/

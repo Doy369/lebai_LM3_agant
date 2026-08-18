@@ -198,31 +198,36 @@ RGB-D 观测 + 语言目标 + 标定状态 + 机器人状态
 
 ```text
 .
-├── 01_collect_data.py                 # 手眼标定数据采集
-├── 02_calibrate.py                    # Eye-to-Hand 标定求解
-├── 03_module2_qwen_demo.py            # Qwen 决策演示
-├── 04_module1_module2_pipeline_demo.py# 视觉坐标与语义决策联调
-├── 05_module3_controller_demo.py      # 机械臂控制 Dry-run
-├── 06_full_pick_pipeline_demo.py      # 完整抓取链路 Dry-run
-├── 07_real_robot_safety_probe_demo.py # 真机安全探测
-├── 08_two_stage_real_robot_test.py    # 探测 / 抓取两阶段测试
-├── 09_module4_fastapi_backend.py      # FastAPI 启动入口
-├── 10_validate_eye_to_hand_with_measured_point.py
-├── 11_auto_calibration.py             # 自动手眼标定入口
+├── apps/
+│   ├── calibration/                   # 数据采集、标定求解与验证入口
+│   ├── demos/                         # Qwen、视觉与抓取 Dry-run
+│   ├── robot/                         # 真机探测与两阶段抓取入口
+│   └── web/                           # FastAPI 服务入口
+├── configs/
+│   └── camera/                        # 可公开的相机配置示例
+├── documentation/
+│   └── guides/                        # 使用与自动标定指南
+├── tests/                             # 安全、兼容性与结构回归测试
+├── tools/                             # 摄像头枚举等开发工具
 ├── biaoding/                          # 标定结果
 ├── robot_system/
-│   ├── calibration/                   # 自动标定
+│   ├── calibration/                   # 标定求解与自动标定
+│   ├── config/                        # 统一路径配置
 │   ├── control/                       # 乐白机械臂安全控制
 │   ├── llm/                           # Qwen 与规则决策
 │   ├── pipeline/                      # 抓取流程编排
 │   ├── vision/                        # RGB-D 相机与坐标转换
 │   └── web/                           # FastAPI 与 Web 控制台
 ├── world_model_experiment/            # 结构化世界模型实验
+├── 01_...py ～ 11_...py               # 旧命令兼容包装器
+├── pyproject.toml                     # 包元数据与稳定 CLI 入口
 ├── requirements-core.txt
 ├── requirements-web.txt
 ├── requirements-optional.txt
 └── requirements-dev.txt
 ```
+
+`apps/` 只负责稳定入口，核心能力继续保留在 `robot_system/`；根目录编号脚本是临时兼容层。新旧命令映射见[第一阶段兼容说明](documentation/guides/COMPATIBILITY.md)。
 
 ## 环境要求
 
@@ -267,6 +272,12 @@ pip install -r requirements-web.txt
 pip install -r requirements-dev.txt
 ```
 
+安装项目及工程化命令入口：
+
+```powershell
+pip install -e ".[dev]"
+```
+
 真实相机和机械臂所需的可选依赖：
 
 ```powershell
@@ -281,15 +292,19 @@ pip install -r requirements-optional.txt
 
 ```powershell
 $env:LEBAI_DRY_RUN="1"
-python .\06_full_pick_pipeline_demo.py
+lebai-pick-demo
 ```
+
+原命令 `python .\06_full_pick_pipeline_demo.py` 仍由兼容层支持。
 
 ### 4. 启动 Web 控制台
 
 ```powershell
 $env:LEBAI_DRY_RUN="1"
-python .\09_module4_fastapi_backend.py
+lebai-web
 ```
+
+原命令 `python .\09_module4_fastapi_backend.py` 仍然有效。
 
 启动后访问：
 
@@ -320,15 +335,17 @@ $env:QWEN_MODEL="<model-name>"
 6. 在操作员看护和急停可用的条件下执行安全探测；
 7. 确认探测位置正确后，再执行与该探测锁匹配的抓取。
 
-更完整的使用说明见 [USAGE_CN.md](USAGE_CN.md)，自动标定说明见 [AUTO_CALIBRATION_CN.md](AUTO_CALIBRATION_CN.md)。
+更完整的使用说明见 [USAGE_CN.md](documentation/guides/USAGE_CN.md)，自动标定说明见 [AUTO_CALIBRATION_CN.md](documentation/guides/AUTO_CALIBRATION_CN.md)。
 
 ## 测试
 
 运行主系统安全测试：
 
 ```powershell
-python -m unittest -v test_safety_hardening.py test_probe_lock_flow.py
+python -m unittest discover -v -s .\tests -p "test_*.py"
 ```
+
+原测试命令 `python -m unittest -v test_safety_hardening.py test_probe_lock_flow.py` 继续兼容。
 
 运行世界模型实验测试：
 
@@ -336,7 +353,7 @@ python -m unittest -v test_safety_hardening.py test_probe_lock_flow.py
 python -m unittest discover -v -s .\world_model_experiment\tests -p "test_*.py"
 ```
 
-当前共有 **32 项离线测试**，覆盖：
+当前共有 **35 项离线测试**，覆盖：
 
 - Web 控制接口认证；
 - 真机显式授权与安全默认值；
@@ -346,6 +363,7 @@ python -m unittest discover -v -s .\world_model_experiment\tests -p "test_*.py"
 - 探测锁创建、过期、失效与一次性消费；
 - 世界模型候选生成、风险决策和试验日志；
 - 世界模型 Web 接口的只读属性。
+- 新旧命令入口映射、CLI 可导入性与统一路径解析。
 
 离线测试通过不代表已经完成所有真机安全认证。真实运动仍需在受控环境中由操作员逐步验证。
 
@@ -386,4 +404,4 @@ python -m unittest discover -v -s .\world_model_experiment\tests -p "test_*.py"
 
 ---
 
-如果你正在阅读本项目以了解其工程思路，可以从 `06_full_pick_pipeline_demo.py`、`robot_system/pipeline/pick_executor.py` 和 `robot_system/control/lebai_controller.py` 开始，它们分别展示了完整入口、模块编排和安全执行逻辑。
+如果你正在阅读本项目以了解其工程思路，可以从 `apps/demos/full_pick_pipeline.py`、`robot_system/pipeline/pick_executor.py` 和 `robot_system/control/lebai_controller.py` 开始，它们分别展示了稳定入口、模块编排和安全执行逻辑。

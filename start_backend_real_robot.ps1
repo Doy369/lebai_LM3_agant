@@ -28,8 +28,8 @@ if (-not $PythonExe) {
 
 $env:LEBAI_DRY_RUN = "0"
 $env:LEBAI_ALLOW_REAL_MOTION = "YES"
-$env:LEBAI_WEB_HOST = "127.0.0.1"
-$env:LEBAI_WEB_PORT = "8001"
+if (-not $env:LEBAI_WEB_HOST) { $env:LEBAI_WEB_HOST = "127.0.0.1" }
+if (-not $env:LEBAI_WEB_PORT) { $env:LEBAI_WEB_PORT = "8001" }
 
 if (-not $env:LEBAI_ROBOT_IP) {
     throw "Set LEBAI_ROBOT_IP in the current PowerShell session before starting real-robot mode."
@@ -45,7 +45,7 @@ Write-Host "Robot address and Web control token loaded from environment variable
 # 或：
 # $env:QWEN_API_KEY = 'your-key'
 
-$env:QWEN_MODEL = "qwen3.5-plus"
+if (-not $env:QWEN_MODEL) { $env:QWEN_MODEL = "qwen3.5-plus" }
 
 if (-not $env:QWEN_API_KEY -and -not $env:DASHSCOPE_API_KEY) {
     Write-Host "QWEN_API_KEY / DASHSCOPE_API_KEY is not set. Camera planning will not call Qwen." -ForegroundColor Yellow
@@ -56,4 +56,4 @@ if (-not $env:QWEN_API_KEY -and -not $env:DASHSCOPE_API_KEY) {
 }
 
 Set-Location -LiteralPath $ProjectRoot
-& $PythonExe .\09_module4_fastapi_backend.py
+& $PythonExe -m apps.web.serve

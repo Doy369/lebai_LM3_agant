@@ -109,7 +109,7 @@ class AutoCalibrationRunRequest(SafeBaseModel):
     min_success_samples: int = Field(default=12, ge=6, le=40, description="Minimum valid samples before solving")
     settle_sec: float = Field(default=0.8, ge=0.0, le=5.0, description="Wait time after each move")
     execute_motion: bool = Field(default=True, description="Whether to move the real robot")
-    run_calibration: bool = Field(default=True, description="Whether to run 02_calibrate.py after sampling")
+    run_calibration: bool = Field(default=True, description="Whether to run the calibration solver after sampling")
     auto_start_system: bool = Field(default=False, description="Whether to call start_sys before the run")
     session_name: Optional[str] = Field(default=None, description="Optional output session name")
 

@@ -4,15 +4,15 @@
 
 当前工程已经包含以下模块：
 
-1. 标定数据采集：[`01_collect_data.py`](01_collect_data.py)
-2. 眼在手外手眼标定：[`02_calibrate.py`](02_calibrate.py)
-3. 大模型决策演示：[`03_module2_qwen_demo.py`](03_module2_qwen_demo.py)
-4. 视觉坐标转换 + 大模型联调：[`04_module1_module2_pipeline_demo.py`](04_module1_module2_pipeline_demo.py)
-5. 机械臂控制 dry-run 演示：[`05_module3_controller_demo.py`](05_module3_controller_demo.py)
-6. 视觉到抓取全链路 dry-run：[`06_full_pick_pipeline_demo.py`](06_full_pick_pipeline_demo.py)
-7. 真机安全探测脚本：[`07_real_robot_safety_probe_demo.py`](07_real_robot_safety_probe_demo.py)
-8. 两阶段真机测试脚本：[`08_two_stage_real_robot_test.py`](08_two_stage_real_robot_test.py)
-9. FastAPI 后端启动入口：[`09_module4_fastapi_backend.py`](09_module4_fastapi_backend.py)
+1. 标定数据采集：[`apps/calibration/collect_data.py`](../../apps/calibration/collect_data.py)
+2. 眼在手外手眼标定：[`robot_system/calibration/eye_to_hand_solver.py`](../../robot_system/calibration/eye_to_hand_solver.py)
+3. 大模型决策演示：[`apps/demos/qwen_planning.py`](../../apps/demos/qwen_planning.py)
+4. 视觉坐标转换 + 大模型联调：[`apps/demos/vision_language_pipeline.py`](../../apps/demos/vision_language_pipeline.py)
+5. 机械臂控制 Dry-run 演示：[`apps/demos/controller_dry_run.py`](../../apps/demos/controller_dry_run.py)
+6. 视觉到抓取全链路 Dry-run：[`apps/demos/full_pick_pipeline.py`](../../apps/demos/full_pick_pipeline.py)
+7. 真机安全探测入口：[`apps/robot/safety_probe.py`](../../apps/robot/safety_probe.py)
+8. 两阶段真机测试入口：[`apps/robot/two_stage_pick.py`](../../apps/robot/two_stage_pick.py)
+9. FastAPI 后端入口：[`apps/web/serve.py`](../../apps/web/serve.py)
 
 ## 1. 环境准备
 
@@ -63,7 +63,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 pip install -r requirements-core.txt
 ```
 
-对应文件：[`requirements-core.txt`](requirements-core.txt)
+对应文件：[`requirements-core.txt`](../../requirements-core.txt)
 
 ### 3.2 Web 后端依赖
 
@@ -79,7 +79,7 @@ pip install -r requirements-core.txt
 pip install -r requirements-web.txt
 ```
 
-对应文件：[`requirements-web.txt`](requirements-web.txt)
+对应文件：[`requirements-web.txt`](../../requirements-web.txt)
 
 ### 3.3 可选工具依赖
 
@@ -88,7 +88,7 @@ pip install -r requirements-web.txt
 - `pygrabber`
   用于按设备名枚举 Windows 摄像头，当前采集脚本默认并不强依赖它。
 - `WMI`
-  用于运行 [`camera.py`](camera.py) 扫描 Windows 摄像头信息。
+  用于运行 [`tools/list_cameras.py`](../../tools/list_cameras.py) 扫描 Windows 摄像头信息。
 
 安装命令：
 
@@ -100,10 +100,16 @@ pip install -r requirements-optional.txt
 
 ```powershell
 pip install -r requirements-dev.txt
-python -m unittest discover -v -s . -p "test*.py"
+python -m unittest discover -v -s .\tests -p "test_*.py"
 ```
 
-对应文件：[`requirements-optional.txt`](requirements-optional.txt)
+安装工程化命令入口：
+
+```powershell
+pip install -e ".[dev]"
+```
+
+对应文件：[`requirements-optional.txt`](../../requirements-optional.txt)
 
 ### 3.4 机械臂 SDK
 
@@ -203,42 +209,42 @@ python -c "from robot_system.pipeline import PickExecutor; print('project import
 
 确认以下文件存在：
 
-- [`biaoding/eye_to_hand_result.json`](biaoding/eye_to_hand_result.json)
+- [`biaoding/eye_to_hand_result.json`](../../biaoding/eye_to_hand_result.json)
 
 如果没有这个文件，先运行采集和标定：
 
 ```powershell
-python .\01_collect_data.py
-python .\02_calibrate.py
+lebai-collect-calibration
+lebai-solve-calibration
 ```
 
 ### 第二步：验证模块二
 
 ```powershell
-python .\03_module2_qwen_demo.py
+lebai-qwen-demo
 ```
 
 ### 第三步：验证模块一 + 模块二
 
 ```powershell
-python .\04_module1_module2_pipeline_demo.py
+lebai-vision-demo
 ```
 
 ### 第四步：验证模块三 dry-run
 
 ```powershell
-python .\05_module3_controller_demo.py
+lebai-controller-demo
 ```
 
 ### 第五步：验证全链路 dry-run
 
 ```powershell
-python .\06_full_pick_pipeline_demo.py
+lebai-pick-demo
 ```
 
 ### 第六步：真机探测
 
-先编辑 [`08_two_stage_real_robot_test.py`](08_two_stage_real_robot_test.py)，重点检查：
+先编辑 [`apps/robot/two_stage_pick.py`](../../apps/robot/two_stage_pick.py)，重点检查：
 
 - `TEST_STAGE`
 - `DRY_RUN`
@@ -255,7 +261,7 @@ python .\06_full_pick_pipeline_demo.py
 运行命令：
 
 ```powershell
-python .\08_two_stage_real_robot_test.py
+lebai-two-stage-test
 ```
 
 ## 7. 模块四后端与控制台如何启动
@@ -269,7 +275,7 @@ pip install -r requirements-web.txt
 然后启动：
 
 ```powershell
-python .\09_module4_fastapi_backend.py
+lebai-web
 ```
 
 默认地址：
@@ -408,7 +414,7 @@ pip install -r requirements-web.txt
 
 ### 9.3 相机打开成了笔记本摄像头
 
-先确认 [`01_collect_data.py`](01_collect_data.py) 里的：
+先确认 [`apps/calibration/collect_data.py`](../../apps/calibration/collect_data.py) 里的：
 
 - `CAMERA_ID`
 - `USE_CAMERA_NAME_MATCH`
