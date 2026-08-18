@@ -1,0 +1,39 @@
+{
+  "mode": "eye_to_hand",
+  "example_only": true,
+  "warning": "Synthetic calibration for offline tests only. Replace it with calibration from your own camera and robot before real motion.",
+  "image_size_wh": [
+    1280,
+    720
+  ],
+  "camera_intrinsic": {
+    "source": "synthetic_public_example",
+    "camera_matrix": [
+      [700.0, 0.0, 640.0],
+      [0.0, 700.0, 360.0],
+      [0.0, 0.0, 1.0]
+    ],
+    "dist_coeffs": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "hand_eye": {
+    "source": "synthetic_public_example",
+    "base_T_camera": [
+      [1.0, 0.0, 0.0, -0.45],
+      [0.0, 1.0, 0.0, 0.0],
+      [0.0, 0.0, 1.0, -0.33],
+      [0.0, 0.0, 0.0, 1.0]
+    ],
+    "camera_T_base": [
+      [1.0, 0.0, 0.0, 0.45],
+      [0.0, 1.0, 0.0, 0.0],
+      [0.0, 0.0, 1.0, 0.33],
+      [0.0, 0.0, 0.0, 1.0]
+    ]
+  }
+}
