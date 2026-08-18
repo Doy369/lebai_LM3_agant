@@ -436,6 +436,301 @@ textarea {
   border-color: rgba(158, 180, 191, 0.16);
 }
 
+.world-model-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(15, 44, 55, 0.92), rgba(12, 25, 36, 0.9) 45%, rgba(31, 27, 48, 0.88)),
+    var(--panel);
+}
+
+.world-model-panel::after {
+  content: "";
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  right: -150px;
+  top: -190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(24, 177, 167, 0.2), transparent 68%);
+  pointer-events: none;
+}
+
+.world-model-head,
+.world-model-layout,
+.gate-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.section-copy {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.world-model-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.gate-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.gate-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 76px;
+  padding: 12px;
+  border-radius: 17px;
+  border: 1px solid rgba(160, 198, 218, 0.14);
+  background: rgba(7, 18, 27, 0.58);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.gate-card strong {
+  display: block;
+  font-size: 13px;
+}
+
+.gate-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.gate-index {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  color: #9eb4bf;
+  background: rgba(158, 180, 191, 0.1);
+  font-family: "Cascadia Code", monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gate-card.pass {
+  border-color: rgba(40, 199, 146, 0.36);
+  background: rgba(40, 199, 146, 0.09);
+}
+
+.gate-card.pass .gate-index {
+  color: #7ff0bc;
+  background: rgba(40, 199, 146, 0.16);
+}
+
+.gate-card.warn {
+  border-color: rgba(255, 194, 74, 0.34);
+  background: rgba(255, 194, 74, 0.08);
+}
+
+.gate-card.warn .gate-index {
+  color: #ffcf66;
+  background: rgba(255, 194, 74, 0.14);
+}
+
+.gate-card.fail {
+  border-color: rgba(255, 93, 93, 0.36);
+  background: rgba(255, 93, 93, 0.08);
+}
+
+.gate-card.fail .gate-index {
+  color: #ff8a8a;
+  background: rgba(255, 93, 93, 0.14);
+}
+
+.gate-card.locked {
+  opacity: 0.58;
+}
+
+.world-model-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 16px;
+}
+
+.world-model-primary,
+.world-model-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-card {
+  padding: 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(160, 198, 218, 0.14);
+  background: rgba(6, 15, 24, 0.66);
+}
+
+.metric-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.metric-card strong {
+  font-size: clamp(18px, 2vw, 26px);
+  color: #edf9fb;
+}
+
+.world-object-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 17px;
+  border-radius: 18px;
+  border: 1px solid rgba(24, 177, 167, 0.24);
+  background: rgba(24, 177, 167, 0.07);
+}
+
+.trial-badge {
+  flex: 0 0 auto;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 8px 11px;
+  border-radius: 999px;
+  color: #96ddd4;
+  background: rgba(24, 177, 167, 0.11);
+  font-family: "Cascadia Code", monospace;
+  font-size: 11px;
+}
+
+.candidate-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(160, 198, 218, 0.14);
+  background: rgba(6, 15, 24, 0.58);
+}
+
+.candidate-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.candidate-table th,
+.candidate-table td {
+  padding: 11px 13px;
+  text-align: left;
+  border-bottom: 1px solid rgba(160, 198, 218, 0.1);
+}
+
+.candidate-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--muted);
+  background: #0b1a24;
+  font-weight: 600;
+}
+
+.candidate-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.candidate-table tr.selected td {
+  color: #dffdf7;
+  background: rgba(40, 199, 146, 0.09);
+}
+
+.candidate-name {
+  font-family: "Cascadia Code", monospace;
+  color: #d0e5ed;
+}
+
+.candidate-status {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #9eb4bf;
+  background: rgba(158, 180, 191, 0.11);
+}
+
+.candidate-status.selected {
+  color: #7ff0bc;
+  background: rgba(40, 199, 146, 0.14);
+}
+
+.empty-cell {
+  padding: 28px !important;
+  text-align: center !important;
+  color: var(--muted);
+}
+
+.check-list,
+.trial-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.check-item,
+.trial-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 12px;
+}
+
+.check-item span:last-child,
+.trial-item span:last-child {
+  color: var(--muted);
+  text-align: right;
+}
+
+.check-item.pass strong {
+  color: #7ff0bc;
+}
+
+.check-item.warn strong {
+  color: #ffcf66;
+}
+
+.check-item.fail strong {
+  color: #ff8a8a;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.world-model-details {
+  margin: 0;
+}
+
 @media (max-width: 1280px) {
   .panel,
   .panel-tall,
@@ -447,6 +742,10 @@ textarea {
 
   .overview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -461,7 +760,20 @@ textarea {
   }
 
   .overview-grid,
-  .jog-grid {
+  .jog-grid,
+  .world-model-layout,
+  .metric-grid,
+  .gate-grid {
     grid-template-columns: 1fr;
+  }
+
+  .world-model-head,
+  .world-object-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .world-model-actions {
+    align-items: flex-start;
   }
 }
