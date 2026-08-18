@@ -535,6 +535,8 @@ async function refreshRobotStatus() {
     const payload = await fetchJson("/api/robot/status");
     const data = payload.data || {};
     state.lastRobotStatus = data;
+    window.__lebaiRobotStatus = data;
+    window.dispatchEvent(new CustomEvent("lebai:robot-status", { detail: data }));
     const kinData = data.kin_data || {};
 
     elements.robotSummary.textContent = data.dry_run

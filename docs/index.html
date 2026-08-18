@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lebai Robot Console</title>
     <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <div class="page-shell">
@@ -72,6 +79,53 @@
               <strong id="cameraSummary">等待读取</strong>
               <pre id="cameraDetail" class="mini-pre"></pre>
             </article>
+          </div>
+        </section>
+
+        <section class="panel panel-wide robot-twin-panel">
+          <div class="panel-head robot-twin-head">
+            <div>
+              <p class="panel-kicker">Digital Twin</p>
+              <h2>Lebai LM3 虚拟机械臂</h2>
+              <p class="section-copy">模型与 Three.js 依赖均已内置到前端目录。关节滑块只控制虚拟模型，不会向真机发送动作。</p>
+            </div>
+            <div class="pill-row">
+              <span id="robotModelStatusPill" class="status-pill neutral">正在加载三维模型</span>
+              <span id="robotTwinSyncPill" class="status-pill neutral">虚拟姿态预览</span>
+            </div>
+          </div>
+
+          <div class="robot-twin-layout">
+            <div class="robot-viewport">
+              <canvas id="robot3dCanvas" class="robot-3d-canvas" aria-label="Lebai LM3 三维模型"></canvas>
+              <div class="robot-viewport-toolbar">
+                <button id="fitRobotViewButton" class="button button-ghost" type="button">适配视图</button>
+                <button id="zeroRobotPoseButton" class="button button-ghost" type="button">虚拟零位</button>
+              </div>
+              <p id="robotModelMessage" class="robot-model-message">正在读取 Lebai_LM3.glb…</p>
+            </div>
+
+            <aside class="robot-joint-panel">
+              <div class="robot-twin-options">
+                <label class="checkbox-row">
+                  <input id="followRobotJointsToggle" type="checkbox" checked />
+                  <span>跟随后端返回的机器人关节</span>
+                </label>
+                <label class="checkbox-row">
+                  <input id="robotAutoRotateToggle" type="checkbox" />
+                  <span>自动旋转视角</span>
+                </label>
+              </div>
+
+              <div class="joint-slider-list" aria-label="虚拟关节控制">
+                <label class="joint-slider"><span>J1</span><input data-virtual-joint="0" type="range" min="-6.1" max="6.1" step="0.01" value="0" /><output data-virtual-joint-value="0">0.00 rad</output></label>
+                <label class="joint-slider"><span>J2</span><input data-virtual-joint="1" type="range" min="-6.1" max="6.1" step="0.01" value="0" /><output data-virtual-joint-value="1">0.00 rad</output></label>
+                <label class="joint-slider"><span>J3</span><input data-virtual-joint="2" type="range" min="-6.1" max="6.1" step="0.01" value="0" /><output data-virtual-joint-value="2">0.00 rad</output></label>
+                <label class="joint-slider"><span>J4</span><input data-virtual-joint="3" type="range" min="-6.1" max="6.1" step="0.01" value="0" /><output data-virtual-joint-value="3">0.00 rad</output></label>
+                <label class="joint-slider"><span>J5</span><input data-virtual-joint="4" type="range" min="-6.1" max="6.1" step="0.01" value="0" /><output data-virtual-joint-value="4">0.00 rad</output></label>
+                <label class="joint-slider"><span>J6</span><input data-virtual-joint="5" type="range" min="-9.4" max="9.4" step="0.01" value="0" /><output data-virtual-joint-value="5">0.00 rad</output></label>
+              </div>
+            </aside>
           </div>
         </section>
 
@@ -437,6 +491,7 @@
       </main>
     </div>
 
-    <script src="./app.js?v=20260715" type="module"></script>
+    <script src="./robot-viewer.js?v=20260818" type="module"></script>
+    <script src="./app.js?v=20260818" type="module"></script>
   </body>
 </html>
