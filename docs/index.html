@@ -75,6 +75,118 @@
           </div>
         </section>
 
+        <section class="panel panel-wide world-model-panel">
+          <div class="panel-head world-model-head">
+            <div>
+              <p class="panel-kicker">Structured World Model</p>
+              <h2>语义—几何世界模型实验</h2>
+              <p class="section-copy">真实RGB-D负责构建状态，候选动作只经过Dry-run运动学与风险评价。本区域不会直接发送机械臂动作。</p>
+            </div>
+            <div class="world-model-actions">
+              <div class="pill-row">
+                <span id="worldModelStatusPill" class="status-pill neutral">实验状态未知</span>
+                <span id="worldModelMotionPill" class="status-pill success">世界模型不发送动作</span>
+              </div>
+              <div class="hero-buttons">
+                <button id="refreshWorldModelButton" class="button button-ghost">刷新实验状态</button>
+                <button id="runWorldModelPlanButton" class="button button-secondary">当前画面世界模型分析</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="gate-grid" aria-label="真机分级门禁">
+            <article id="wmGateOffline" class="gate-card pending">
+              <span class="gate-index">01</span>
+              <div><strong>离线预检</strong><p>标定、SDK、磁盘与配置</p></div>
+            </article>
+            <article id="wmGateCamera" class="gate-card pending">
+              <span class="gate-index">02</span>
+              <div><strong>相机只读</strong><p>RGB-D与Qwen感知</p></div>
+            </article>
+            <article id="wmGateRobot" class="gate-card pending">
+              <span class="gate-index">03</span>
+              <div><strong>机器人只读</strong><p>关节与TCP状态</p></div>
+            </article>
+            <article id="wmGateDryRun" class="gate-card pending">
+              <span class="gate-index">04</span>
+              <div><strong>世界模型Dry-run</strong><p>候选、IK与风险排序</p></div>
+            </article>
+            <article id="wmGateProbe" class="gate-card pending">
+              <span class="gate-index">05</span>
+              <div><strong>安全探测</strong><p>现场确认后执行probe</p></div>
+            </article>
+            <article id="wmGatePick" class="gate-card locked">
+              <span class="gate-index">06</span>
+              <div><strong>完整抓取</strong><p>必须复用有效probe lock</p></div>
+            </article>
+          </div>
+
+          <div class="world-model-layout">
+            <div class="world-model-primary">
+              <div class="metric-grid">
+                <article class="metric-card">
+                  <span>世界模型决策</span>
+                  <strong id="wmDecisionMetric">尚未分析</strong>
+                </article>
+                <article class="metric-card">
+                  <span>预测成功率</span>
+                  <strong id="wmSuccessMetric">—</strong>
+                </article>
+                <article class="metric-card">
+                  <span>综合不确定性</span>
+                  <strong id="wmUncertaintyMetric">—</strong>
+                </article>
+                <article class="metric-card">
+                  <span>碰撞风险</span>
+                  <strong id="wmCollisionMetric">—</strong>
+                </article>
+              </div>
+
+              <article class="world-object-card">
+                <div>
+                  <p class="status-label">当前目标与状态</p>
+                  <strong id="wmTargetSummary">等待真实画面世界模型分析</strong>
+                </div>
+                <span id="wmTrialBadge" class="trial-badge">尚无实验编号</span>
+              </article>
+
+              <div class="candidate-table-wrap">
+                <table class="candidate-table">
+                  <thead>
+                    <tr>
+                      <th>候选</th>
+                      <th>来源</th>
+                      <th>成功率</th>
+                      <th>碰撞</th>
+                      <th>滑落</th>
+                      <th>不确定性</th>
+                      <th>状态</th>
+                    </tr>
+                  </thead>
+                  <tbody id="wmCandidateTableBody">
+                    <tr><td colspan="7" class="empty-cell">运行当前画面世界模型分析后显示候选排序</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <aside class="world-model-side">
+              <article class="result-card">
+                <p class="status-label">预检与运行安全</p>
+                <div id="wmPreflightChecks" class="check-list"><span class="muted-text">等待读取</span></div>
+              </article>
+              <article class="result-card">
+                <p class="status-label">最近实验</p>
+                <div id="wmRecentTrials" class="trial-list"><span class="muted-text">暂无实验记录</span></div>
+              </article>
+              <details class="debug-details world-model-details">
+                <summary>查看完整世界状态与预测</summary>
+                <pre id="wmDetail" class="result-pre"></pre>
+              </details>
+            </aside>
+          </div>
+        </section>
+
         <section class="panel panel-camera">
           <div class="panel-head">
             <div>
@@ -325,6 +437,6 @@
       </main>
     </div>
 
-    <script src="./app.js" type="module"></script>
+    <script src="./app.js?v=20260715" type="module"></script>
   </body>
 </html>

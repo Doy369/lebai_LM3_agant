@@ -13,6 +13,8 @@ const state = {
   runtimeConfig: null,
   probeLockId: null,
   probeLockSnapshotId: null,
+  lastWorldModelStatus: null,
+  lastWorldModelResult: null,
 };
 
 const elements = {
@@ -57,6 +59,18 @@ const elements = {
   autoCalibSettleInput: document.getElementById("autoCalibSettleInput"),
   autoCalibSessionInput: document.getElementById("autoCalibSessionInput"),
   autoCalibRunCalibrationToggle: document.getElementById("autoCalibRunCalibrationToggle"),
+  worldModelStatusPill: document.getElementById("worldModelStatusPill"),
+  worldModelMotionPill: document.getElementById("worldModelMotionPill"),
+  wmDecisionMetric: document.getElementById("wmDecisionMetric"),
+  wmSuccessMetric: document.getElementById("wmSuccessMetric"),
+  wmUncertaintyMetric: document.getElementById("wmUncertaintyMetric"),
+  wmCollisionMetric: document.getElementById("wmCollisionMetric"),
+  wmTargetSummary: document.getElementById("wmTargetSummary"),
+  wmTrialBadge: document.getElementById("wmTrialBadge"),
+  wmCandidateTableBody: document.getElementById("wmCandidateTableBody"),
+  wmPreflightChecks: document.getElementById("wmPreflightChecks"),
+  wmRecentTrials: document.getElementById("wmRecentTrials"),
+  wmDetail: document.getElementById("wmDetail"),
 };
 
 function init() {
@@ -65,13 +79,15 @@ function init() {
 
   bindButton("refreshOverviewButton", refreshOverview);
   bindButton("refreshRobotButton", refreshRobotStatus);
-  bindButton("refreshCalibrationButton", refreshCalibrationAndCamera);
+  bindButton("refreshCalibrationButton", () => refreshCalibrationAndCamera({ refreshFrame: true }));
   bindButton("clearResultButton", clearResult);
   bindButton("clearLogButton", clearLogs);
   bindButton("loadExampleButton", loadDebugExamplePayload);
   bindButton("loadCameraExampleButton", loadCameraExamplePayload);
   bindButton("autoCalibrationPlanButton", previewAutoCalibrationPlan);
   bindButton("autoCalibrationRunButton", runAutoCalibration);
+  bindButton("refreshWorldModelButton", refreshWorldModelStatus);
+  bindButton("runWorldModelPlanButton", runWorldModelPlan);
 
   bindButton("startRobotButton", () => callRobotAction("/api/robot/start-system", {}, "启动机械臂"));
   bindButton("recordHomeButton", () => callRobotAction("/api/robot/home/record", {}, "记录当前位置为 Home"));
@@ -98,7 +114,7 @@ function init() {
     refreshOverview().catch((error) => handleError("刷新总览", error));
   });
 
-  elements.controlTokenInput.addEventListener("change", () => {
+  elements.controlTokenInput.addEventListener("input", () => {
     state.controlToken = elements.controlTokenInput.value.trim();
     saveControlToken(state.controlToken);
     addLog("系统", state.controlToken ? "控制令牌已更新。" : "控制令牌已清除。");
@@ -220,7 +236,224 @@ async function refreshOverview() {
     refreshRuntimeConfig(),
     refreshCalibrationAndCamera(),
     refreshRobotStatus(),
+    refreshWorldModelStatus(),
   ]);
+}
+
+async function refreshWorldModelStatus() {
+  const payload = await fetchJson("/api/experiment/world-model/status");
+  const data = payload.data || {};
+  state.lastWorldModelStatus = data;
+  renderWorldModelStatus(data);
+}
+
+function renderWorldModelStatus(data) {
+  const preflight = data.preflight || {};
+  const checks = Array.isArray(preflight.checks) ? preflight.checks : [];
+  const checksByName = Object.fromEntries(checks.map((item) => [item.name, item]));
+  const runtimeSafety = data.runtime_safety || {};
+
+  setPill(
+    elements.worldModelStatusPill,
+    preflight.failed ? "error" : preflight.ready_for_camera_capture ? "success" : "warning",
+    preflight.failed ? "实验预检失败" : preflight.ready_for_camera_capture ? "感知实验可运行" : "实验准备未完成",
+  );
+  setPill(
+    elements.worldModelMotionPill,
+    runtimeSafety.world_model_plan_sends_motion ? "error" : "success",
+    runtimeSafety.world_model_plan_sends_motion ? "警告：可能发送动作" : "世界模型只读规划",
+  );
+
+  setWorldModelGate("wmGateOffline", preflight.failed ? "fail" : "pass");
+  const cameraCheck = checksByName.orbbec_sdk;
+  const qwenCheck = checksByName.qwen_api_key;
+  const cameraGate = preflight.ready_for_camera_capture
+    ? "pass"
+    : cameraCheck?.level === "fail"
+      ? "fail"
+      : "warn";
+  setWorldModelGate("wmGateCamera", cameraGate);
+  setWorldModelGate("wmGateRobot", preflight.ready_for_robot_readonly ? "pass" : "warn");
+  setWorldModelGate("wmGateDryRun", data.latest_state ? "pass" : "pending");
+  updateProbeAndPickGates();
+
+  elements.wmPreflightChecks.innerHTML = checks.length
+    ? checks
+        .map(
+          (item) => `
+            <div class="check-item ${escapeHtml(item.level || "warn")}">
+              <strong>${escapeHtml(preflightCheckLabel(item.name))}</strong>
+              <span>${escapeHtml(item.level === "pass" ? "通过" : item.level === "fail" ? "失败" : "待处理")}</span>
+            </div>
+          `,
+        )
+        .join("")
+    : '<span class="muted-text">暂无预检信息</span>';
+
+  const trials = Array.isArray(data.recent_trials) ? data.recent_trials : [];
+  elements.wmRecentTrials.innerHTML = trials.length
+    ? trials
+        .map(
+          (trial) => `
+            <div class="trial-item">
+              <strong>${escapeHtml(trial.name || "unknown")}</strong>
+              <span>${escapeHtml(formatTrialState(trial))}</span>
+            </div>
+          `,
+        )
+        .join("")
+    : '<span class="muted-text">暂无实验记录</span>';
+
+  if (!state.lastWorldModelResult && data.latest_state) {
+    const targetId = data.latest_state?.task?.target_track_id || data.latest_state?.objects?.[0]?.track_id;
+    elements.wmTargetSummary.textContent = targetId
+      ? `最近世界状态：${targetId}`
+      : "已读取最近世界状态";
+    elements.wmDetail.textContent = prettyJson({
+      preflight,
+      runtime_safety: runtimeSafety,
+      latest_state_path: data.latest_state_path,
+      latest_state: data.latest_state,
+    });
+  }
+
+  if (!qwenCheck || qwenCheck.level !== "pass") {
+    elements.worldModelStatusPill.title = "配置 QWEN_API_KEY 或 DASHSCOPE_API_KEY 后才能运行真实画面分析。";
+  } else {
+    elements.worldModelStatusPill.title = "";
+  }
+}
+
+async function runWorldModelPlan() {
+  const userCommand = elements.commandInput.value.trim();
+  if (!userCommand) throw new Error("请输入自然语言抓取指令。");
+  const payload = {
+    user_command: userCommand,
+    scene_context: buildSceneContext(),
+  };
+  addChat("user", `${userCommand}（世界模型只读分析）`);
+  addLog("世界模型", "正在采集真实RGB-D并进行Dry-run候选风险评价。不会发送机械臂动作。");
+  const response = await fetchJson("/api/experiment/world-model/plan-from-camera", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  state.lastWorldModelResult = response;
+  renderWorldModelResult(response);
+  consumeActionResult("世界模型只读分析", {
+    ...response,
+    data: response.data?.source_plan || response.data,
+  });
+  await refreshWorldModelStatus();
+}
+
+function renderWorldModelResult(response) {
+  const data = response.data || {};
+  const decision = data.world_model_decision || {};
+  const prediction = decision.prediction || {};
+  const target = data.target || {};
+  const position = target.position_base_m || {};
+
+  elements.wmDecisionMetric.textContent = worldModelActionLabel(decision.action);
+  elements.wmSuccessMetric.textContent = formatPercent(prediction.success_probability);
+  elements.wmUncertaintyMetric.textContent = formatPercent(prediction.total_uncertainty);
+  elements.wmCollisionMetric.textContent = formatPercent(prediction.collision_probability);
+  elements.wmTargetSummary.textContent = target.track_id
+    ? `${target.name || "目标"} / ${target.track_id} / Base (${formatNumber(position.x)}, ${formatNumber(position.y)}, ${formatNumber(position.z)}) m`
+    : "世界模型未构建出有效目标";
+  elements.wmTrialBadge.textContent = data.trial_id || "未生成实验编号";
+  elements.wmDetail.textContent = prettyJson(response);
+
+  const candidates = Array.isArray(data.candidates) ? [...data.candidates] : [];
+  candidates.sort((left, right) => {
+    if (left.selected !== right.selected) return left.selected ? -1 : 1;
+    return Number(right.prediction?.success_probability || 0) - Number(left.prediction?.success_probability || 0);
+  });
+  elements.wmCandidateTableBody.innerHTML = candidates.length
+    ? candidates
+        .map((item) => {
+          const candidate = item.candidate || {};
+          const candidatePrediction = item.prediction || {};
+          return `
+            <tr class="${item.selected ? "selected" : ""}">
+              <td class="candidate-name">${escapeHtml(shortCandidateId(candidate.candidate_id))}</td>
+              <td>${escapeHtml(candidate.source || "unknown")}</td>
+              <td>${escapeHtml(formatPercent(candidatePrediction.success_probability))}</td>
+              <td>${escapeHtml(formatPercent(candidatePrediction.collision_probability))}</td>
+              <td>${escapeHtml(formatPercent(candidatePrediction.slip_probability))}</td>
+              <td>${escapeHtml(formatPercent(candidatePrediction.total_uncertainty))}</td>
+              <td><span class="candidate-status ${item.selected ? "selected" : ""}">${item.selected ? "已选择" : candidate.ik_reachable ? "可达" : "拒绝"}</span></td>
+            </tr>
+          `;
+        })
+        .join("")
+    : '<tr><td colspan="7" class="empty-cell">没有生成可显示的抓取候选</td></tr>';
+
+  setWorldModelGate("wmGateDryRun", response.success ? "pass" : "fail");
+  setPill(
+    elements.worldModelStatusPill,
+    response.success ? "success" : "error",
+    response.success ? `世界模型完成 / ${worldModelActionLabel(decision.action)}` : "世界模型分析失败",
+  );
+  refreshPlanImage();
+}
+
+function setWorldModelGate(id, kind) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.className = `gate-card ${kind}`;
+}
+
+function updateProbeAndPickGates() {
+  setWorldModelGate("wmGateProbe", state.probeLockId ? "pass" : "pending");
+  setWorldModelGate("wmGatePick", state.probeLockId ? "warn" : "locked");
+}
+
+function worldModelActionLabel(action) {
+  const labels = {
+    execute: "建议执行",
+    probe: "建议先探测",
+    reobserve: "需要重新观察",
+    reject: "拒绝动作",
+  };
+  return labels[action] || "尚未决策";
+}
+
+function preflightCheckLabel(name) {
+  const labels = {
+    calibration: "标定",
+    world_model_config: "模型配置",
+    workspace: "工作空间",
+    trial_output: "日志目录",
+    free_disk: "磁盘空间",
+    core_dependencies: "核心依赖",
+    orbbec_sdk: "Orbbec SDK",
+    lebai_sdk: "乐白 SDK",
+    qwen_api_key: "Qwen Key",
+    motion_environment: "运动环境",
+  };
+  return labels[name] || name || "未知检查";
+}
+
+function formatTrialState(trial) {
+  if (trial.has_outcome) return "已有结果";
+  if (trial.has_decision) return "已有决策";
+  if (trial.has_world_state) return "已有状态";
+  return "记录中";
+}
+
+function formatPercent(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${(number * 100).toFixed(1)}%` : "—";
+}
+
+function formatNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(3) : "—";
+}
+
+function shortCandidateId(value) {
+  const text = String(value || "unknown");
+  return text.length > 30 ? `…${text.slice(-29)}` : text;
 }
 
 async function refreshHealth() {
@@ -258,7 +491,7 @@ async function refreshRuntimeConfig() {
   }
 }
 
-async function refreshCalibrationAndCamera() {
+async function refreshCalibrationAndCamera({ refreshFrame = false } = {}) {
   const [calibrationPayload, cameraPayload] = await Promise.all([
     fetchJson("/api/calibration/status"),
     fetchJson("/api/camera/status"),
@@ -285,7 +518,16 @@ async function refreshCalibrationAndCamera() {
       ? "仅 RGB 预览已就绪"
       : "当前没有可用预览";
   elements.cameraDetail.textContent = prettyJson(camera);
-  refreshCameraFrame();
+  if (refreshFrame || elements.autoRefreshToggle.checked) {
+    refreshCameraFrame();
+  } else {
+    const container = elements.cameraImage.parentElement;
+    if (container) container.classList.remove("has-image");
+    elements.cameraImage.removeAttribute("src");
+    elements.cameraPlaceholderText.textContent = state.cameraStreamReady
+      ? "相机已就绪；点击“刷新相机与标定”加载单帧预览"
+      : "当前未检测到可用相机预览";
+  }
 }
 
 async function refreshRobotStatus() {
@@ -663,6 +905,7 @@ function setProbeLockFromResponse(response) {
   if (!data.probe_lock_id) return;
   state.probeLockId = data.probe_lock_id;
   state.probeLockSnapshotId = data.lock_snapshot_id || data.snapshot_id || null;
+  updateProbeAndPickGates();
   const snapshotLabel = state.probeLockSnapshotId || data.probe_lock_id;
   addChat("assistant", `完整抓取将复用本次安全探测：${snapshotLabel}`);
   addLog("安全探测锁", `完整抓取将复用本次安全探测：${snapshotLabel}`, false, {
@@ -681,6 +924,7 @@ function clearProbeLock(reason, options = {}) {
   }
   state.probeLockId = null;
   state.probeLockSnapshotId = null;
+  updateProbeAndPickGates();
 }
 
 function clearLogs() {
