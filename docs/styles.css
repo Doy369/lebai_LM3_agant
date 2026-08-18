@@ -731,6 +731,117 @@ textarea {
   margin: 0;
 }
 
+.robot-twin-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(44, 194, 226, 0.13), transparent 32%),
+    linear-gradient(145deg, rgba(11, 30, 39, 0.98), rgba(7, 20, 27, 0.98));
+}
+
+.robot-twin-panel::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background-image: linear-gradient(rgba(79, 215, 240, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 215, 240, 0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.robot-twin-head,
+.robot-twin-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.robot-twin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(270px, 0.7fr);
+  gap: 18px;
+}
+
+.robot-viewport {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(112, 226, 246, 0.16);
+  border-radius: 18px;
+  background: #07131a;
+  box-shadow: inset 0 0 48px rgba(0, 0, 0, 0.35);
+}
+
+.robot-3d-canvas {
+  display: block;
+  width: 100%;
+  height: 520px;
+  touch-action: none;
+}
+
+.robot-viewport-toolbar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.robot-model-message {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  left: 16px;
+  margin: 0;
+  color: #9bb9c4;
+  font-size: 12px;
+  text-align: center;
+  text-shadow: 0 1px 3px #000;
+}
+
+.robot-joint-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid rgba(112, 226, 246, 0.13);
+  border-radius: 18px;
+  background: rgba(3, 14, 20, 0.58);
+}
+
+.robot-twin-options {
+  display: grid;
+  gap: 10px;
+}
+
+.joint-slider-list {
+  display: grid;
+  gap: 13px;
+}
+
+.joint-slider {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 68px;
+  align-items: center;
+  gap: 9px;
+  color: #d7eef5;
+  font-size: 12px;
+}
+
+.joint-slider > span {
+  font-weight: 700;
+}
+
+.joint-slider input[type="range"] {
+  width: 100%;
+  accent-color: #42cce5;
+}
+
+.joint-slider output {
+  color: #8fb1bd;
+  font-family: "Cascadia Code", monospace;
+  text-align: right;
+}
+
 @media (max-width: 1280px) {
   .panel,
   .panel-tall,
@@ -775,5 +886,28 @@ textarea {
 
   .world-model-actions {
     align-items: flex-start;
+  }
+
+  .robot-twin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .robot-3d-canvas {
+    height: 430px;
+  }
+}
+
+@media (max-width: 520px) {
+  .robot-3d-canvas {
+    height: 360px;
+  }
+
+  .robot-viewport-toolbar {
+    top: 10px;
+    right: 10px;
+  }
+
+  .joint-slider {
+    grid-template-columns: 24px minmax(0, 1fr) 64px;
   }
 }
