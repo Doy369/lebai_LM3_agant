@@ -1,0 +1,1647 @@
+{
+  "source": "https://github.com/Doy369/lebai_LM3_agant/blob/54d4ce8e4a6149326bc1d604a11b1f33d529aa73/docs/models/Lebai_LM3.glb",
+  "sha256": "dc4f5b2a2e599d696498b5e44ec5964b945644495eb43b9816ad8ca858e7ec4f",
+  "bytes": 3376080,
+  "asset": {
+    "generator": "Khronos glTF Blender I/O v4.4.56",
+    "version": "2.0"
+  },
+  "units": "glTF meters; physical dimensions not measured",
+  "calibration": "pending",
+  "importedBoundsModelM": {
+    "min": [
+      -0.07130870223045349,
+      -2.9812061708156534e-9,
+      -0.35436983416920087
+    ],
+    "max": [
+      0.07130862027406693,
+      0.9039715315285408,
+      0.07120079547166824
+    ],
+    "size": [
+      0.14261732250452042,
+      0.903971534509747,
+      0.4255706296408691
+    ]
+  },
+  "gripper0BoundsModelM": {
+    "min": [
+      -0.07130870223045349,
+      -2.9812061708156534e-9,
+      -0.35436983416920087
+    ],
+    "max": [
+      0.07130862027406693,
+      0.9039715315285408,
+      0.07120079547166824
+    ],
+    "size": [
+      0.14261732250452042,
+      0.903971534509747,
+      0.4255706296408691
+    ]
+  },
+  "gripper100BoundsModelM": {
+    "min": [
+      -0.07130870223045349,
+      -2.9812061708156534e-9,
+      -0.3472977975050316
+    ],
+    "max": [
+      0.07130862027406693,
+      0.9319831819100086,
+      0.07120079547166824
+    ],
+    "size": [
+      0.14261732250452042,
+      0.9319831848912148,
+      0.41849859297669983
+    ]
+  },
+  "nodes": [
+    {
+      "index": 0,
+      "name": "ARM0-GLB",
+      "parent": 72,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 1,
+      "name": "ARM1-GLB",
+      "parent": 71,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        -0.49999988079071045,
+        0.49999988079071045,
+        0.5000001192092896,
+        0.5000001192092896
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 2,
+      "name": "ARM2-GLB",
+      "parent": 70,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0.7071068286895752,
+        0.7071068286895752
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 3,
+      "name": "ARM3-GLB",
+      "parent": 69,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        -0.7071069478988647,
+        -0.7071065902709961,
+        0,
+        5.3385093679025886e-8
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 4,
+      "name": "ARM4-GLB",
+      "parent": 68,
+      "translation": [
+        0,
+        0.029999971389770508,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0.7071066498756409,
+        0.70710688829422,
+        1.309979325014865e-7
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 5,
+      "name": "ARM5-GLB",
+      "parent": 67,
+      "translation": [
+        0,
+        0.06832993030548096,
+        -0.029999814927577972
+      ],
+      "rotationXYZW": [
+        -1,
+        0,
+        0,
+        7.549790126404332e-8
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 6,
+      "name": "ARM6-GLB",
+      "parent": 66,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        -1,
+        0,
+        0,
+        7.549790126404332e-8
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 7,
+      "name": "camera_stand_metal_0",
+      "parent": 11,
+      "translation": [
+        0,
+        0,
+        0.000011021594218618702
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 8,
+      "name": "imagetostl_mesh0_camera1_0",
+      "parent": 10,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 9,
+      "name": "imagetostl_mesh0_shiny_black_0",
+      "parent": 10,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 10,
+      "name": "imagetostl_mesh0",
+      "parent": 11,
+      "translation": [
+        -8.03303337097168,
+        -14.423686027526855,
+        0.15412916243076324
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 11,
+      "name": "camera_stand",
+      "parent": 65,
+      "translation": [
+        0,
+        12.518394470214844,
+        0.000011021594218618702
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 12,
+      "name": "polySurface36_black_claw_0",
+      "parent": 29,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 13,
+      "name": "polySurface42_black_claw_0",
+      "parent": 24,
+      "translation": [
+        0,
+        0,
+        -0.000011372422704880591
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 14,
+      "name": "polySurface44_black_claw_0",
+      "parent": 17,
+      "translation": [
+        0,
+        -0.0000021602936612907797,
+        -0.000011346069186402019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 15,
+      "name": "polySurface45_metal_0",
+      "parent": 16,
+      "translation": [
+        -23.194862365722656,
+        -4.839029312133789,
+        1.3444114923477173
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1.0000090599060059,
+        1,
+        2
+      ]
+    },
+    {
+      "index": 16,
+      "name": "polySurface45",
+      "parent": 17,
+      "translation": [
+        0,
+        -0.0000021602936612907797,
+        -0.000011346069186402019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 17,
+      "name": "polySurface44",
+      "parent": 24,
+      "translation": [
+        23.29204559326172,
+        -0.08699251711368561,
+        -3.811626434326172
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 18,
+      "name": "polySurface52_black_claw_0",
+      "parent": 19,
+      "translation": [
+        0,
+        -0.0000021602936612907797,
+        -0.000011346069186402019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 19,
+      "name": "polySurface52",
+      "parent": 24,
+      "translation": [
+        23.29204559326172,
+        -0.08699251711368561,
+        -3.811626434326172
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 20,
+      "name": "polySurface53_black_claw_0",
+      "parent": 21,
+      "translation": [
+        0,
+        -0.0000021602936612907797,
+        -0.000011346069186402019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 21,
+      "name": "polySurface53",
+      "parent": 24,
+      "translation": [
+        23.29204559326172,
+        -0.08699251711368561,
+        -3.811626434326172
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 22,
+      "name": "polySurface58_black_claw_0",
+      "parent": 23,
+      "translation": [
+        0,
+        -0.0000021479900169651955,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 23,
+      "name": "polySurface58",
+      "parent": 24,
+      "translation": [
+        23.298654556274414,
+        -0.08699250221252441,
+        -3.771015167236328
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 24,
+      "name": "polySurface42",
+      "parent": 29,
+      "translation": [
+        0.4247632920742035,
+        -7.130515098571777,
+        -0.13167183101177216
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 25,
+      "name": "polySurface56_metal_0",
+      "parent": 26,
+      "translation": [
+        0,
+        -0.0000021479936549440026,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 26,
+      "name": "polySurface56",
+      "parent": 29,
+      "translation": [
+        23.723417282104492,
+        -7.2175068855285645,
+        -3.9026832580566406
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 27,
+      "name": "polySurface57_black_claw_0",
+      "parent": 28,
+      "translation": [
+        0,
+        -0.0000021479936549440026,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 28,
+      "name": "polySurface57",
+      "parent": 29,
+      "translation": [
+        23.723417282104492,
+        -7.2175068855285645,
+        -3.9026832580566406
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 29,
+      "name": "polySurface36",
+      "parent": 64,
+      "translation": [
+        -0.41684776544570923,
+        4.203219413757324,
+        3.5255677700042725
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 30,
+      "name": "polySurface38_black_claw_0",
+      "parent": 47,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 31,
+      "name": "polySurface40_black_claw_0",
+      "parent": 42,
+      "translation": [
+        0,
+        0,
+        -0.00000374234514310956
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 32,
+      "name": "polySurface46_black_claw_0",
+      "parent": 35,
+      "translation": [
+        0,
+        -0.0000021479936549440026,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 33,
+      "name": "polySurface47_metal_0",
+      "parent": 34,
+      "translation": [
+        -22.722501754760742,
+        -3.153902530670166,
+        -0.5925625562667847
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        2
+      ]
+    },
+    {
+      "index": 34,
+      "name": "polySurface47",
+      "parent": 35,
+      "translation": [
+        0,
+        -0.0000021479936549440026,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 35,
+      "name": "polySurface46",
+      "parent": 42,
+      "translation": [
+        23.32169532775879,
+        -0.08473420143127441,
+        3.063800811767578
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 36,
+      "name": "polySurface59_black_claw_0",
+      "parent": 37,
+      "translation": [
+        0,
+        -0.0000021479936549440026,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 37,
+      "name": "polySurface59",
+      "parent": 42,
+      "translation": [
+        23.32169532775879,
+        -0.08473420143127441,
+        3.063800811767578
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 38,
+      "name": "polySurface60_black_claw_0",
+      "parent": 39,
+      "translation": [
+        0,
+        -0.0000021479936549440026,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 39,
+      "name": "polySurface60",
+      "parent": 42,
+      "translation": [
+        23.32169532775879,
+        -0.08473420143127441,
+        3.063800811767578
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 40,
+      "name": "polySurface65_black_claw_0",
+      "parent": 41,
+      "translation": [
+        0,
+        -0.0000021479936549440026,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 41,
+      "name": "polySurface65",
+      "parent": 42,
+      "translation": [
+        23.32169532775879,
+        -0.08473420143127441,
+        3.063800811767578
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 42,
+      "name": "polySurface40",
+      "parent": 47,
+      "translation": [
+        0.4282717704772949,
+        -7.1327714920043945,
+        0.08140189945697784
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 43,
+      "name": "polySurface63_metal_0",
+      "parent": 44,
+      "translation": [
+        0,
+        -0.0000021479900169651955,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 44,
+      "name": "polySurface63",
+      "parent": 47,
+      "translation": [
+        23.749967575073242,
+        -7.2175068855285645,
+        3.145214080810547
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 45,
+      "name": "polySurface64_black_claw_0",
+      "parent": 46,
+      "translation": [
+        0,
+        -0.0000021479900169651955,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 46,
+      "name": "polySurface64",
+      "parent": 47,
+      "translation": [
+        23.749967575073242,
+        -7.2175068855285645,
+        3.145214080810547
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 47,
+      "name": "polySurface38",
+      "parent": 64,
+      "translation": [
+        -0.44339779019355774,
+        4.203218936920166,
+        -3.522321939468384
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 48,
+      "name": "polySurface49_black_claw_0",
+      "parent": 53,
+      "translation": [
+        0,
+        0,
+        0.0000025880108296405524
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 49,
+      "name": "polySurface54_metal_0",
+      "parent": 50,
+      "translation": [
+        0,
+        -0.0000021479900169651955,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 50,
+      "name": "polySurface54",
+      "parent": 53,
+      "translation": [
+        25.59626007080078,
+        -4.372751712799072,
+        -2.524097442626953
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 51,
+      "name": "polySurface55_black_claw_0",
+      "parent": 52,
+      "translation": [
+        0,
+        -0.0000021479900169651955,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 52,
+      "name": "polySurface55",
+      "parent": 53,
+      "translation": [
+        25.59626007080078,
+        -4.372751712799072,
+        -2.524097442626953
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 53,
+      "name": "polySurface49",
+      "parent": 63,
+      "translation": [
+        -25.596256256103516,
+        4.372747898101807,
+        2.5240962505340576
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 54,
+      "name": "polySurface50_black_claw_0",
+      "parent": 59,
+      "translation": [
+        0,
+        -0.000002685184881556779,
+        -0.000005041912118031178
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 55,
+      "name": "polySurface61_metal_0",
+      "parent": 56,
+      "translation": [
+        0,
+        -0.0000021479900169651955,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 56,
+      "name": "polySurface61",
+      "parent": 59,
+      "translation": [
+        22.20773696899414,
+        -4.3744988441467285,
+        1.7732354402542114
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 57,
+      "name": "polySurface62_black_claw_0",
+      "parent": 58,
+      "translation": [
+        0,
+        -0.0000021479900169651955,
+        -0.000003716674655152019
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 58,
+      "name": "polySurface62",
+      "parent": 59,
+      "translation": [
+        22.20773696899414,
+        -4.3744988441467285,
+        1.7732354402542114
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 59,
+      "name": "polySurface50",
+      "parent": 63,
+      "translation": [
+        -22.207731246948242,
+        4.374493598937988,
+        -1.7732441425323486
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 60,
+      "name": "polySurface66_black_claw_0",
+      "parent": 62,
+      "translation": [
+        0,
+        -0.0000020337465684860945,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 61,
+      "name": "polySurface66_white_arm_0",
+      "parent": 62,
+      "translation": [
+        0,
+        -0.0000020337465684860945,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 62,
+      "name": "polySurface66",
+      "parent": 63,
+      "translation": [
+        -23.306432723999023,
+        6.884248733520508,
+        0.37710753083229065
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 63,
+      "name": "polySurface48",
+      "parent": 64,
+      "translation": [
+        23.306570053100586,
+        -3.0142881870269775,
+        -0.37710943818092346
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 64,
+      "name": "grabber",
+      "parent": 65,
+      "translation": [
+        -0.003800931852310896,
+        -11.369497299194336,
+        -0.018895011395215988
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 65,
+      "name": "robotgrabber",
+      "parent": 66,
+      "translation": [
+        0,
+        0,
+        -0.030000001192092896
+      ],
+      "rotationXYZW": [
+        0.70710688829422,
+        0,
+        0,
+        0.7071066498756409
+      ],
+      "scale": [
+        0.007950832135975361,
+        0.007950832135975361,
+        0.007950832135975361
+      ]
+    },
+    {
+      "index": 66,
+      "name": "Joint6",
+      "parent": 67,
+      "translation": [
+        0,
+        0.06832998991012573,
+        -0.03793000429868698
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 67,
+      "name": "Joint5",
+      "parent": 68,
+      "translation": [
+        0,
+        0.029999971389770508,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 68,
+      "name": "Joint4",
+      "parent": 69,
+      "translation": [
+        0,
+        0.25999999046325684,
+        -0.07833000272512436
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 69,
+      "name": "Joint3",
+      "parent": 70,
+      "translation": [
+        0,
+        0.2800000011920929,
+        0.04602999985218048
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 70,
+      "name": "Joint2",
+      "parent": 71,
+      "translation": [
+        0,
+        0.012500002980232239,
+        -0.08833000063896179
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 71,
+      "name": "Joint1",
+      "parent": 72,
+      "translation": [
+        0,
+        0.20332999527454376,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 72,
+      "name": "lebairobot",
+      "parent": null,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotationXYZW": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "name": "Take 001",
+      "durationSec": 9.5,
+      "tracks": [
+        {
+          "name": "polySurface36.quaternion",
+          "keyframes": 229,
+          "startSec": 0,
+          "frame20Sec": 0.8333333134651184,
+          "endSec": 9.5
+        },
+        {
+          "name": "polySurface42.quaternion",
+          "keyframes": 229,
+          "startSec": 0,
+          "frame20Sec": 0.8333333134651184,
+          "endSec": 9.5
+        },
+        {
+          "name": "polySurface38.quaternion",
+          "keyframes": 229,
+          "startSec": 0,
+          "frame20Sec": 0.8333333134651184,
+          "endSec": 9.5
+        },
+        {
+          "name": "polySurface40.quaternion",
+          "keyframes": 229,
+          "startSec": 0,
+          "frame20Sec": 0.8333333134651184,
+          "endSec": 9.5
+        },
+        {
+          "name": "polySurface49.quaternion",
+          "keyframes": 229,
+          "startSec": 0,
+          "frame20Sec": 0.8333333134651184,
+          "endSec": 9.5
+        },
+        {
+          "name": "polySurface50.quaternion",
+          "keyframes": 229,
+          "startSec": 0,
+          "frame20Sec": 0.8333333134651184,
+          "endSec": 9.5
+        }
+      ]
+    }
+  ]
+}

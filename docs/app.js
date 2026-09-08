@@ -1,4 +1,18 @@
+import {PreviewConnection} from "./preview-connection.mjs";
+const previewConnection = new PreviewConnection();
 const DEFAULT_LOCAL_API_BASE = "http://127.0.0.1:8001";
+
+// Optional isolated viewer; a WebGL failure must not break existing controls.
+import('./robot3d/index.js').then(({mountRobot3D}) => {
+  mountRobot3D(document.getElementById('robot3d-panel'), {
+    readStatus: signal => fetchJson('/api/robot/status', {method: 'GET', signal, cache: 'no-store'}),
+  });
+}).catch(error => {
+  const panel = document.getElementById('robot3d-panel');
+  if (panel) panel.textContent = `三维模块不可用：${error.message}。原有控制台可继续使用。`;
+});
+
+
 
 const state = {
   apiBase: resolveInitialApiBase(),
@@ -111,7 +125,7 @@ function init() {
     elements.apiBaseInput.value = state.apiBase;
     saveApiBase(state.apiBase);
     addLog("系统", `已切换后端地址为 ${state.apiBase}`);
-    refreshOverview().catch((error) => handleError("刷新总览", error));
+    if (previewConnection.enabled) refreshOverview().catch((error) => handleError("刷新总览", error));
   });
 
   elements.controlTokenInput.addEventListener("input", () => {
@@ -127,12 +141,37 @@ function init() {
     button.addEventListener("click", () => runJog(button.dataset.jog, button.dataset.kind));
   });
 
-  Promise.resolve()
-    .then(loadCameraExamplePayload)
-    .then(loadDebugExamplePayload)
-    .then(refreshOverview)
-    .then(updateAutoRefresh)
-    .catch((error) => handleError("初始化", error));
+  const connectionToggle = document.getElementById('connectBackendToggle');
+  connectionToggle.addEventListener('change', () => {
+    previewConnection.setEnabled(connectionToggle.checked);
+    if (connectionToggle.checked) {
+      Promise.resolve().then(loadCameraExamplePayload).then(loadDebugExamplePayload)
+        .then(refreshOverview).catch(error => handleError('连接后端', error));
+    } else {
+      elements.autoRefreshToggle.checked = false;
+      updateAutoRefresh();
+      state.cameraStreamReady = false;
+      state.lastRobotStatus = null;
+      clearProbeLock('后端已断开');
+      applyRobotSafetyState(null);
+      elements.cameraImage.removeAttribute('src');
+      elements.planImage.removeAttribute('src');
+      setPill(elements.backendStatusPill, 'neutral', '静态预览 · 后端未连接');
+      setPill(elements.robotStatusPill, 'neutral', '机器人未连接');
+      setPill(elements.robotSafetyPill, 'neutral', '未读取真机状态');
+    }
+    // The viewer discards the previous source and any in-flight feedback.
+    elements.apiBaseInput.dispatchEvent(new Event('change'));
+  });
+  setPill(elements.backendStatusPill, 'neutral', '静态预览 · 后端未连接');
+  setPill(elements.robotStatusPill, 'neutral', '机器人未连接');
+  setPill(elements.robotSafetyPill, 'neutral', '未读取真机状态');
+  applyRobotSafetyState(null);
+  addLog('在线预览', '三维功能无需后端；接口功能需启用后端连接。');
+  window.addEventListener('pagehide', () => {
+    previewConnection.setEnabled(false);
+    clearInterval(state.refreshTimer); clearInterval(state.cameraTimer);
+  }, {once:true});
 }
 
 function resolveInitialApiBase() {
@@ -206,7 +245,7 @@ function bindButton(id, handler) {
 }
 
 async function fetchJson(path, options = {}) {
-  const response = await fetch(`${state.apiBase}${path}`, {
+  return previewConnection.fetch(`${state.apiBase}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -214,20 +253,6 @@ async function fetchJson(path, options = {}) {
       ...(options.headers || {}),
     },
   });
-
-  let payload = {};
-  try {
-    payload = await response.json();
-  } catch {
-    payload = {};
-  }
-
-  if (!response.ok) {
-    const detail = payload.detail || payload.message || response.statusText;
-    throw new Error(detail);
-  }
-
-  return payload;
 }
 
 async function refreshOverview() {
@@ -972,6 +997,7 @@ function applyRobotSafetyState(robotStatus) {
 }
 
 function refreshCameraFrame() {
+  if (!previewConnection.enabled) return;
   const container = elements.cameraImage.parentElement;
   if (!state.cameraStreamReady) {
     if (container) container.classList.remove("has-image");
@@ -990,6 +1016,7 @@ function refreshCameraFrame() {
 }
 
 function refreshPlanImage() {
+  if (!previewConnection.enabled) return;
   const container = elements.planImage.parentElement;
   elements.planImage.onload = () => {
     if (container) container.classList.add("has-image");
@@ -1024,7 +1051,7 @@ function updateAutoRefresh() {
   state.refreshTimer = null;
   state.cameraTimer = null;
 
-  if (elements.autoRefreshToggle.checked) {
+  if (elements.autoRefreshToggle.checked && previewConnection.enabled) {
     state.refreshTimer = setInterval(() => {
       refreshRobotStatus().catch((error) => handleError("自动刷新机器人状态", error));
     }, 3000);
