@@ -2,6 +2,8 @@
 
 ## 基于 RGB-D、多模态大模型与语义—几何世界模型的具身智能操作系统
 
+本地 `/ui/` 已增加模块化机械臂三维预览、只读反馈、虚拟摄像头和场景配置，见[三维集成运行说明](documentation/guides/ROBOT3D_CN.md)。该集成不改变 `docs/` 的线上静态预览。
+
 > A safety-first vision-language robotic manipulation system that turns natural-language instructions into verified robot actions.
 
 > 🌐 [在线查看世界模型控制台](https://doy369.github.io/lebai_LM3_agant/)（静态界面预览；实时感知与真机控制需要本地后端及硬件）

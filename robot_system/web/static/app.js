@@ -1,5 +1,16 @@
 const DEFAULT_LOCAL_API_BASE = "http://127.0.0.1:8001";
 
+// Optional isolated viewer; a WebGL failure must not break existing controls.
+import('./robot3d/index.js').then(({mountRobot3D}) => {
+  mountRobot3D(document.getElementById('robot3d-panel'), {
+    readStatus: signal => fetchJson('/api/robot/status', {method: 'GET', signal, cache: 'no-store'}),
+  });
+}).catch(error => {
+  const panel = document.getElementById('robot3d-panel');
+  if (panel) panel.textContent = `三维模块不可用：${error.message}。原有控制台可继续使用。`;
+});
+
+
 const state = {
   apiBase: resolveInitialApiBase(),
   controlToken: loadControlToken(),

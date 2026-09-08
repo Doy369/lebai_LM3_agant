@@ -559,6 +559,8 @@ print(json.dumps(payload, ensure_ascii=False))
             controller.connect()
             status = controller.get_robot_status_summary()
             kin_data = controller.get_kin_data()
+            # Server read completion time, not a hardware acquisition timestamp.
+            feedback_read_at_unix_ms = time.time_ns() // 1_000_000
             saved_home_joint_pose = self._effective_home_joint_pose()
             return {
                 "success": True,
@@ -578,6 +580,9 @@ print(json.dumps(payload, ensure_ascii=False))
                     "requires_manual_enable": status.get("requires_manual_enable"),
                     "is_connected": status.get("is_connected"),
                     "kin_data": kin_data,
+                    "feedback_read_at_unix_ms": feedback_read_at_unix_ms,
+                    "feedback_time_source": "server_read_completion",
+                    "joint_unit": "radian",
                     "command_log": controller.command_log,
                 },
             }
