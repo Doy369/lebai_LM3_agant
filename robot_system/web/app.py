@@ -139,7 +139,8 @@ def create_app(config: Optional[WebBackendConfig] = None) -> FastAPI:
         return Response(content=payload, media_type="image/jpeg")
 
     @app.get("/api/robot/status", response_model=GenericMessageResponse, tags=["robot"])
-    def robot_status() -> dict:
+    def robot_status(response: Response) -> dict:
+        response.headers["Cache-Control"] = "no-store"
         return _call_service(service.robot_status)
 
     @app.post("/api/robot/emergency-stop", response_model=GenericMessageResponse, tags=["robot"])

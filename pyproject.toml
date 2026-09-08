@@ -51,5 +51,9 @@ where = ["."]
 include = ["apps*", "robot_system*", "tools*", "world_model_experiment*"]
 
 [tool.setuptools.package-data]
-robot_system = ["web/static/*.html", "web/static/*.js", "web/static/*.css"]
+robot_system = [
+  "web/static/*.html", "web/static/*.js", "web/static/*.css",
+  "web/static/robot3d/*.js", "web/static/robot3d/*.css", "web/static/robot3d/*.json",
+  "web/static/robot3d/assets/*", "web/static/robot3d/vendor/*",
+]
 world_model_experiment = ["config/*.json"]

@@ -911,3 +911,5 @@ textarea {
     grid-template-columns: 24px minmax(0, 1fr) 64px;
   }
 }
+/* Keep guide links legible against the console's dark header. */
+.hero-copy a { color: #80dce9; text-underline-offset: 3px; }

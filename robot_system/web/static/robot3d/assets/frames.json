@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "convention": "A_T_B maps column-vector p_B to p_A; serialized matrices row-major",
+  "units": {"translation": "m", "angle": "rad", "runtimeTime": "ms", "glTFAnimationTime": "s"},
+  "frames": {
+    "base": "Robot Base convention: right-handed, Z up; placement in the model remains provisional",
+    "model": "Imported glTF root, right-handed Y up; all imported node TRS preserved",
+    "scene": "Three.js right-handed Y up",
+    "opticalCamera": "OpenCV optical axes X right, Y down, Z forward",
+    "threeCamera": "Three.js camera X right, Y up, looks along -Z",
+    "tcp": "Backend TCP frame, translation meters, R=Rz(rz)*Ry(ry)*Rx(rx); model flange-to-TCP unknown"
+  },
+  "transforms": {
+    "scene_T_base": {"rotation": "Rx(-pi/2)", "translationM": [0,0,0], "source": "render coordinate convention", "status": "defined_not_measured"},
+    "base_T_model": {"rotation": "Rx(+pi/2)", "translationM": [0,0,0], "scale": 1, "source": "glTF Y-up and root/base mesh inspection", "status": "pending_physical_calibration"},
+    "base_T_camera": {"source": "biaoding/eye_to_hand_result.json hand_eye.base_T_camera", "status": "numeric_consistency_checked_not_enabled_for_alignment"},
+    "optical_T_threeCamera": {"rotation": "Rx(pi)", "source": "OpenCV versus Three.js axis convention", "status": "defined_not_measured"},
+    "base_T_tcp": {"source": "GET /api/robot/status data.kin_data.actual_tcp_pose", "status": "conversion_defined_not_rendered_as_model_tcp"},
+    "flange_T_tcp": {"source": null, "status": "missing_do_not_assume_identity"}
+  },
+  "jointMapping": {"source": "dtsci reference axes; actual binary node hierarchy checked", "localAxes": ["y","z","z","z","y","z"], "directions": [1,1,1,1,1,1], "zeroOffsetsRad": [0,0,0,0,0,0], "formula": "q_import * axisAngle(axis_local, direction*q_sdk + zeroOffsetRad)", "status": "axes_signs_and_zero_offsets_pending_physical_calibration"},
+  "displayCentering": "Adjust free camera position/target only; never subtract model bounding-box center from physical transforms"
+}

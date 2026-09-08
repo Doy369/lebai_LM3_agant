@@ -1,0 +1,24 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { GLTFLoader } from '../robot_system/web/static/robot3d/vendor/GLTFLoader.js';
+import { Box3, Vector3 } from '../robot_system/web/static/robot3d/vendor/three.module.js';
+import { inspectGLB, disposeGraph } from '../robot_system/web/static/robot3d/model-loader.js';
+import { JointRig } from '../robot_system/web/static/robot3d/joints.js';
+const base = new URL('../robot_system/web/static/robot3d/assets/', import.meta.url);
+const bytes = await readFile(new URL('Lebai_LM3.glb',base));
+const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+const json = inspectGLB(buffer);
+const gltf = await new GLTFLoader().parseAsync(buffer, '');
+const rig = new JointRig(gltf);
+const bounds = () => { const b = new Box3().setFromObject(gltf.scene); return {min:b.min.toArray(),max:b.max.toArray(),size:b.getSize(new Vector3()).toArray()}; };
+const imported = bounds();
+const parents = {}; json.nodes.forEach((n,i) => n.children?.forEach(c => parents[c] = i));
+const nodes = json.nodes.map((n,i) => ({index:i,name:n.name,parent:parents[i]??null,translation:n.translation??[0,0,0],rotationXYZW:n.rotation??[0,0,0,1],scale:n.scale??[1,1,1]}));
+const animations = gltf.animations.map(a => ({name:a.name,durationSec:a.duration,tracks:a.tracks.map(t => ({name:t.name,keyframes:t.times.length,startSec:t.times[0],frame20Sec:t.times[20],endSec:t.times.at(-1)}))}));
+rig.apply({joints:[0,0,0,0,0,0],gripper:0}); const gripper0 = bounds();
+rig.apply({joints:[0,0,0,0,0,0],gripper:1}); const gripper1 = bounds();
+const report = {source:'https://github.com/Doy369/lebai_LM3_agant/blob/54d4ce8e4a6149326bc1d604a11b1f33d529aa73/docs/models/Lebai_LM3.glb',sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length,asset:json.asset,
+  units:'glTF meters; physical dimensions not measured',calibration:'pending',importedBoundsModelM:imported,gripper0BoundsModelM:gripper0,gripper100BoundsModelM:gripper1,nodes,animations};
+await writeFile(new URL('model-inspection.json',base),JSON.stringify(report,null,2));
+console.log(JSON.stringify({sha256:report.sha256,bounds:imported,animations},null,2));
+rig.dispose();disposeGraph(gltf.scene);

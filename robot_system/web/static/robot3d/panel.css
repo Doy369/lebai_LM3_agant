@@ -1,0 +1,27 @@
+.robot3d-panel { min-width: 0; }
+.r3-head, .r3-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.r3-toolbar { justify-content: flex-start; margin: 12px 0; }
+.r3-toolbar button, .r3-toolbar select { padding: 8px 12px; border-radius: 8px; border: 1px solid #bccdd1; background: #f4f8fa; color: #203b45; cursor: pointer; }
+.r3-toolbar button:disabled { opacity: .45; cursor: default; }
+.r3-views { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(230px, 1fr); gap: 16px; }
+.r3-main { height: 420px; border-radius: 12px; overflow: hidden; background: #eaf0f3; }
+.r3-main canvas { display: block; width: 100%; height: 100%; }
+.r3-camera canvas { width: 100%; height: auto; display: block; border-radius: 10px; }
+.r3-camera { align-self: start; }
+.r3-caption, .r3-notice { font-size: 13px; line-height: 1.65; color: #afc2c8; }
+.r3-notice { background: #fff4da; border-radius: 8px; padding: 10px 12px; color: #745b26; }
+.r3-status { display: block; padding: 9px 12px; border-radius: 8px; background: #eaf0f3; color: #203b45; font-size: 13px; margin: 10px 0; }
+.r3-status[data-kind="stale"], .r3-status[data-kind="disconnected"] { background: #ffe4df; color: #982d20; }
+.r3-status[data-kind="simulated"] { background: #fff1ce; color: #745b26; }
+.r3-error { color: #ffaca3; min-height: 1.5em; margin: 8px 0; overflow-wrap: anywhere; }
+.r3-joints { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; border: 0; padding: 0; margin: 14px 0; }
+.r3-joint { display: grid; grid-template-columns: 1fr 78px; gap: 5px 10px; font-size: 13px; }
+.r3-joint input[type="range"] { width: 100%; grid-column: 1 / -1; accent-color: #177889; }
+.r3-panel-input, .r3-joint input[type="text"] { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px; border: 1px solid #bfced4; border-radius: 7px; background: white; color: #263e48; }
+.r3-joint input[aria-invalid="true"] { border-color: #b82521; background: #fff0ec; }
+.r3-trajectory { display: grid; grid-template-columns: minmax(0,1fr) 140px; gap: 12px; }
+.r3-panel-input { font-family: ui-monospace, monospace; }
+.r3-config { margin-top: 15px; }
+.r3-readout { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media(max-width: 850px) { .r3-views { grid-template-columns: 1fr; } .r3-joints { grid-template-columns: repeat(2,minmax(0,1fr)); } .r3-main { height: 340px; } }
+@media(max-width: 480px) { .r3-joints, .r3-trajectory { grid-template-columns: 1fr; } }
