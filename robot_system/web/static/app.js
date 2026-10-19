@@ -1,29 +1,37 @@
 const DEFAULT_LOCAL_API_BASE = "http://127.0.0.1:8001";
 
 // Optional isolated viewer; a WebGL failure must not break existing controls.
-import('./robot3d/index.js').then(({mountRobot3D}) => {
+import('./robot3d/index.js?v=20261013-image-objects2').then(({mountRobot3D}) => {
   mountRobot3D(document.getElementById('robot3d-panel'), {
     readStatus: signal => fetchJson('/api/robot/status', {method: 'GET', signal, cache: 'no-store'}),
+    readCalibration: signal => fetchJson('/api/calibration/status', {method: 'GET', signal, cache: 'no-store'}),
+    captureObjects: captureObjectsForVirtualScene,
+    readCameraObjects: () => state.latestCameraCapture?.apiBase === state.apiBase ? state.latestCameraCapture : null,
+    getCameraCommand: () => elements.commandInput.value.trim(),
   });
 }).catch(error => {
   const panel = document.getElementById('robot3d-panel');
   if (panel) panel.textContent = `三维模块不可用：${error.message}。原有控制台可继续使用。`;
 });
 
-
 const state = {
   apiBase: resolveInitialApiBase(),
   controlToken: loadControlToken(),
   lastResult: null,
+  latestCameraCapture: null,
   lastRobotStatus: null,
   logItems: [],
   chatItems: [],
   refreshTimer: null,
   cameraTimer: null,
   cameraStreamReady: false,
+  cameraFramePending: false,
   runtimeConfig: null,
   probeLockId: null,
   probeLockSnapshotId: null,
+  probeLockPlanId: null,
+  previewedPlanId: null,
+  virtualSceneRevision: 0,
   lastWorldModelStatus: null,
   lastWorldModelResult: null,
 };
@@ -119,6 +127,7 @@ function init() {
 
   elements.apiBaseInput.addEventListener("change", () => {
     state.apiBase = normalizeBaseUrl(elements.apiBaseInput.value);
+    state.latestCameraCapture = null;
     elements.apiBaseInput.value = state.apiBase;
     saveApiBase(state.apiBase);
     addLog("系统", `已切换后端地址为 ${state.apiBase}`);
@@ -133,6 +142,38 @@ function init() {
 
   elements.autoRefreshToggle.addEventListener("change", updateAutoRefresh);
   elements.commandInput.addEventListener("input", () => clearProbeLock("已修改抓取指令"));
+  for (const element of [
+    elements.pickPreOffsetInput, elements.pickPostOffsetInput,
+    elements.placePreOffsetInput, elements.placePostOffsetInput,
+    elements.dropXInput, elements.dropYInput, elements.dropZInput, elements.dropYawInput,
+  ]) {
+    element?.addEventListener("input", () => clearProbeLock("已修改统一抓取计划参数"));
+  }
+  window.addEventListener("lebai:compiled-plan-preview-complete", async (event) => {
+    const planId = event.detail?.planId;
+    if (planId && planId === state.probeLockPlanId) {
+      const lockId = state.probeLockId, sceneRevision = state.virtualSceneRevision;
+      try {
+        await fetchJson("/api/pipeline/confirm-plan-preview", {
+          method: "POST",
+          body: JSON.stringify({probe_lock_id: lockId, plan_id: planId}),
+        });
+        if (state.probeLockId !== lockId || state.probeLockPlanId !== planId || state.virtualSceneRevision !== sceneRevision) return;
+        state.previewedPlanId = planId;
+        addLog("虚拟预演", `统一抓取计划 ${planId} 已完整播放并由后端登记；碰撞检查状态仍以计划验证字段为准。`);
+        updateProbeAndPickGates();
+        applyRobotSafetyState(state.lastRobotStatus);
+      } catch (error) {
+        handleError("确认统一计划预演", error);
+      }
+    }
+  });
+  window.addEventListener("lebai:virtual-scene-changed", () => {
+    state.virtualSceneRevision++;
+    state.previewedPlanId = null;
+    updateProbeAndPickGates();
+    applyRobotSafetyState(state.lastRobotStatus);
+  });
 
   document.querySelectorAll("[data-jog]").forEach((button) => {
     button.addEventListener("click", () => runJog(button.dataset.jog, button.dataset.kind));
@@ -416,7 +457,8 @@ function setWorldModelGate(id, kind) {
 
 function updateProbeAndPickGates() {
   setWorldModelGate("wmGateProbe", state.probeLockId ? "pass" : "pending");
-  setWorldModelGate("wmGatePick", state.probeLockId ? "warn" : "locked");
+  const previewPending = Boolean(state.probeLockPlanId && state.previewedPlanId !== state.probeLockPlanId);
+  setWorldModelGate("wmGatePick", state.probeLockId && !previewPending ? "warn" : "locked");
 }
 
 function worldModelActionLabel(action) {
@@ -475,7 +517,7 @@ async function refreshHealth() {
   setPill(
     elements.backendStatusPill,
     data.calibration_file_exists ? "success" : "warning",
-    data.dry_run ? "后端在线 / Dry Run" : "后端在线 / 真机模式",
+    data.dry_run ? "后端在线 / Dry Run" : data.read_only ? "后端在线 / 真机只读" : "后端在线 / 真机模式",
   );
 }
 
@@ -483,6 +525,7 @@ async function refreshRuntimeConfig() {
   const payload = await fetchJson("/api/config");
   const data = payload.data || {};
   state.runtimeConfig = data;
+  applyRobotSafetyState(state.lastRobotStatus);
 
   if (data.default_probe_descend_clearance_m != null) {
     elements.probeClearanceInput.value = Number(data.default_probe_descend_clearance_m).toFixed(3);
@@ -534,6 +577,7 @@ async function refreshCalibrationAndCamera({ refreshFrame = false } = {}) {
   } else {
     const container = elements.cameraImage.parentElement;
     if (container) container.classList.remove("has-image");
+    state.cameraFramePending = false;
     elements.cameraImage.removeAttribute("src");
     elements.cameraPlaceholderText.textContent = state.cameraStreamReady
       ? "相机已就绪；点击“刷新相机与标定”加载单帧预览"
@@ -550,7 +594,7 @@ async function refreshRobotStatus() {
 
     elements.robotSummary.textContent = data.dry_run
       ? "Dry Run 模式"
-      : `${data.robot_state || "unknown"} / can_move=${Boolean(data.can_move)} / teach=${Boolean(data.teach_mode_requested)}`;
+      : `${data.read_only ? "只读 / " : ""}${data.robot_state || "unknown"} / can_move=${Boolean(data.can_move)} / teach=${Boolean(data.teach_mode_requested)}`;
     elements.robotDetail.textContent = prettyJson({
       robot_state: data.robot_state,
       can_move: data.can_move,
@@ -568,11 +612,13 @@ async function refreshRobotStatus() {
     setPill(
       elements.robotStatusPill,
       data.dry_run ? "warning" : data.can_move ? "success" : "error",
-      data.dry_run ? "机器人 Dry Run" : data.can_move ? "机器人可运动" : "机器人不可运动",
+      data.dry_run ? "机器人 Dry Run" : data.read_only ? "真机只读同步" : data.can_move ? "机器人可运动" : "机器人不可运动",
     );
 
     const safetyText = data.dry_run
       ? "未连接真机"
+      : data.read_only
+        ? "只读模式 · 写请求已禁用"
       : data.teach_mode_requested
         ? "当前处于示教模式"
         : data.requires_manual_enable
@@ -685,6 +731,7 @@ async function runAutoCalibration() {
 }
 
 async function planFromCamera() {
+  const sourceApiBase = state.apiBase;
   clearProbeLock("已执行新的当前画面规划");
   const payload = {
     user_command: elements.commandInput.value.trim(),
@@ -695,7 +742,20 @@ async function planFromCamera() {
     method: "POST",
     body: JSON.stringify(payload),
   });
+  if (state.apiBase !== sourceApiBase) throw new Error("后端地址已更改，请重新识别当前画面");
   consumeActionResult("当前画面规划", response);
+}
+
+async function captureObjectsForVirtualScene(command, signal) {
+  const sourceApiBase = state.apiBase;
+  clearProbeLock("已开始新的相机识别");
+  const response = await fetchJson(`/api/camera/objects?target=${encodeURIComponent(command)}`, {signal, cache: "no-store"});
+  if (state.apiBase !== sourceApiBase) throw new Error("后端地址已更改，请重新识别当前画面");
+  if (!response.success || !response.data?.objects?.length) throw Error(response.message || "未识别到可定位的物体");
+  state.latestCameraCapture = {plan: response.data, apiBase: state.apiBase, capturedAt: response.data.capturedAt,
+    photoUrl: `${state.apiBase}/api/camera/latest-objects.jpg?ts=${Date.now()}`};
+  addLog("单张图像识别", response.message);
+  return state.latestCameraCapture;
 }
 
 async function graspFromCamera(mode) {
@@ -704,6 +764,9 @@ async function graspFromCamera(mode) {
   }
   if (mode === "pick" && !state.probeLockId) {
     throw new Error("完整抓取前必须先执行当前画面安全探测，并在探测锁有效期内抓取。");
+  }
+  if (mode === "pick" && state.probeLockPlanId && state.previewedPlanId !== state.probeLockPlanId) {
+    throw new Error("完整抓取前必须先让三维场景完整播放本次统一抓取计划。请等待虚拟预演结束。");
   }
   const usingProbeLock = mode === "pick" && Boolean(state.probeLockId);
   const payload = {
@@ -729,6 +792,10 @@ async function graspFromCamera(mode) {
     });
     if (mode === "probe") {
       setProbeLockFromResponse(response);
+      const compiledPlan = response.data?.compiled_plan;
+      if (compiledPlan) window.dispatchEvent(new CustomEvent("lebai:compiled-plan", {
+        detail: {plan: compiledPlan, trajectoryValidation: response.data?.trajectory_validation || null},
+      }));
     } else if (usingProbeLock) {
       clearProbeLock("完整抓取已消费本次安全探测", { silent: true });
     }
@@ -829,6 +896,12 @@ async function runJog(axis, kind) {
 function consumeActionResult(title, response) {
   state.lastResult = response;
   const data = response.data || {};
+  if (data.snapshot_id) {
+    state.latestCameraCapture = response.success && data.success !== false && data.surface_point_base_m ? {
+      plan: response, apiBase: state.apiBase, capturedAt: new Date().toISOString(),
+      photoUrl: `${state.apiBase}/api/camera/latest-plan.jpg?ts=${Date.now()}`,
+    } : null;
+  }
   elements.resultSummary.textContent = `${title} / ${response.message || "完成"}`;
   elements.resultDetail.textContent = prettyJson(response);
 
@@ -843,6 +916,29 @@ function consumeActionResult(title, response) {
       depth_m: data.depth_m,
       point_base_m: data.point_base_m,
       grasp_pose: data.grasp_pose,
+      compiled_plan_id: data.compiled_plan?.plan_id,
+      trajectory_validation: data.trajectory_validation ? {
+        report_id: data.trajectory_validation.report_id,
+        plan_id: data.trajectory_validation.plan_id,
+        kinematic_status: data.trajectory_validation.kinematic_status,
+        collision_status: data.trajectory_validation.collision_status,
+        gate_recommendation: data.trajectory_validation.gate_recommendation,
+        sample_count: data.trajectory_validation.samples?.length,
+        segments: data.trajectory_validation.segments,
+        issues: data.trajectory_validation.issues,
+        collision_validation: data.trajectory_validation.collision_validation ? {
+          report_id: data.trajectory_validation.collision_validation.report_id,
+          status: data.trajectory_validation.collision_validation.status,
+          geometry_status: data.trajectory_validation.collision_validation.geometry_status,
+          scene_status: data.trajectory_validation.collision_validation.scene_status,
+          checked_sample_count: data.trajectory_validation.collision_validation.checked_sample_count,
+          obstacle_count: data.trajectory_validation.collision_validation.obstacle_count,
+          minimum_clearance_m: data.trajectory_validation.collision_validation.minimum_clearance_m,
+          closest_pair: data.trajectory_validation.collision_validation.closest_pair,
+          contacts: data.trajectory_validation.collision_validation.contacts,
+          issues: data.trajectory_validation.collision_validation.issues,
+        } : null,
+      } : null,
       decision: data.decision,
       execution: data.execution,
     });
@@ -916,7 +1012,10 @@ function setProbeLockFromResponse(response) {
   if (!data.probe_lock_id) return;
   state.probeLockId = data.probe_lock_id;
   state.probeLockSnapshotId = data.lock_snapshot_id || data.snapshot_id || null;
+  state.probeLockPlanId = data.compiled_plan?.plan_id || null;
+  state.previewedPlanId = null;
   updateProbeAndPickGates();
+  applyRobotSafetyState(state.lastRobotStatus);
   const snapshotLabel = state.probeLockSnapshotId || data.probe_lock_id;
   addChat("assistant", `完整抓取将复用本次安全探测：${snapshotLabel}`);
   addLog("安全探测锁", `完整抓取将复用本次安全探测：${snapshotLabel}`, false, {
@@ -935,7 +1034,10 @@ function clearProbeLock(reason, options = {}) {
   }
   state.probeLockId = null;
   state.probeLockSnapshotId = null;
+  state.probeLockPlanId = null;
+  state.previewedPlanId = null;
   updateProbeAndPickGates();
+  applyRobotSafetyState(state.lastRobotStatus);
 }
 
 function clearLogs() {
@@ -957,10 +1059,13 @@ function setPill(element, kind, text) {
 
 function applyRobotSafetyState(robotStatus) {
   const requiresMotion = document.querySelectorAll("[data-requires-motion='true']");
+  const readOnly = Boolean(state.runtimeConfig?.read_only || robotStatus?.read_only);
   const canMove = robotStatus ? Boolean(robotStatus.dry_run || robotStatus.can_move) : false;
   const teachModeRequested = robotStatus ? Boolean(robotStatus.teach_mode_requested) : false;
-  const allowMotionActions = canMove && !teachModeRequested;
-  const blockedReason = teachModeRequested
+  const allowMotionActions = !readOnly && canMove && !teachModeRequested;
+  const blockedReason = readOnly
+    ? "后端处于真机只读模式，写请求已禁用"
+    : teachModeRequested
     ? "当前处于示教模式，请先退出示教模式"
     : "当前 can_move=false，请先启动并使能机械臂";
 
@@ -978,20 +1083,48 @@ function applyRobotSafetyState(robotStatus) {
     button.disabled = !allowMotionActions;
     button.title = allowMotionActions ? "" : blockedReason;
   });
+
+  const pickFromCameraButton = document.getElementById("pickFromCameraButton");
+  const previewPending = Boolean(state.probeLockPlanId && state.previewedPlanId !== state.probeLockPlanId);
+  if (pickFromCameraButton && allowMotionActions && (!state.probeLockId || previewPending)) {
+    pickFromCameraButton.disabled = true;
+    pickFromCameraButton.title = !state.probeLockId
+      ? "请先完成当前画面安全探测"
+      : "请等待统一抓取计划完成虚拟播放";
+  }
+
+  if (readOnly) {
+    for (const id of [
+      "startRobotButton", "recordHomeButton", "enterTeachModeButton", "exitTeachModeButton",
+      "emergencyStopButton", "stopMotionButton", "openGripperButton", "closeGripperButton",
+      "resetRobotButton", "autoCalibrationRunButton", "planFromCameraButton",
+      "probeFromCameraButton", "pickFromCameraButton", "planPickButton", "probeButton", "pickButton",
+    ]) {
+      const button = document.getElementById(id);
+      if (button) { button.disabled = true; button.title = blockedReason; }
+    }
+  }
 }
 
 function refreshCameraFrame() {
   const container = elements.cameraImage.parentElement;
   if (!state.cameraStreamReady) {
     if (container) container.classList.remove("has-image");
+    state.cameraFramePending = false;
     elements.cameraImage.removeAttribute("src");
     elements.cameraPlaceholderText.textContent = "当前未检测到可用相机预览";
     return;
   }
+  // SDK 开流可能超过刷新间隔；等这一帧完成，避免反复取消加载。
+  if (state.cameraFramePending) return;
+  state.cameraFramePending = true;
+  elements.cameraPlaceholderText.textContent = "正在读取相机画面…";
   elements.cameraImage.onload = () => {
+    state.cameraFramePending = false;
     if (container) container.classList.add("has-image");
   };
   elements.cameraImage.onerror = () => {
+    state.cameraFramePending = false;
     if (container) container.classList.remove("has-image");
     elements.cameraPlaceholderText.textContent = "实时相机画面读取失败";
   };

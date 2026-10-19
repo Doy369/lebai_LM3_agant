@@ -1,6 +1,6 @@
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { LoadingManager } from './vendor/three.module.js';
-import { JointRig } from './joints.js';
+import { JointRig } from './joints.js?v=20260913-joint5';
 
 export function disposeGraph(root) {
   const disposed = new Set();

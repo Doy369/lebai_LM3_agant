@@ -4,10 +4,12 @@ from typing import Any
 
 from .llm import QwenPickAgent
 from .pipeline import PickExecutor, PickExecutorConfig
+from .planning import CompiledGraspPlan
 from .vision import CalibrationBundle, Detection2D, VisionTransformer
 
 __all__ = [
     "CalibrationBundle",
+    "CompiledGraspPlan",
     "Detection2D",
     "PickExecutor",
     "PickExecutorConfig",

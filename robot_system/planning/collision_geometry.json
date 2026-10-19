@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "model_id": "lebai_glb_capsules_v1",
+  "geometry_status": "approximate_unverified",
+  "source": "web/static/robot3d/assets/lebaifinal.glb and model-inspection.json",
+  "kinematic_mapping_status": "joint1_joint2_joint5_directions_verified_joint3_joint4_joint6_pending",
+  "base_T_model": "rotation_x_plus_90_deg",
+  "joint_names": ["Joint1", "Joint2", "Joint3", "Joint4", "Joint5", "Joint6"],
+  "joint_axes": ["y", "z", "z", "z", "y", "z"],
+  "joint_directions": [1, 1, 1, 1, -1, 1],
+  "joint_zero_offsets_rad": [
+    -0.004793689962142629,
+    1.4965900061809287,
+    0.06883525752197305,
+    1.576452880950225,
+    0.7861651537913911,
+    0.0
+  ],
+  "joint_local_translations_model_m": [
+    [0.0, 0.20332999527454376, 0.0],
+    [0.0, 0.012500002980232239, -0.08833000063896179],
+    [0.0, 0.2800000011920929, 0.04602999985218048],
+    [0.0, 0.25999999046325684, -0.07833000272512436],
+    [0.0, 0.029999971389770508, 0.0],
+    [0.0, 0.06832998991012573, -0.03793000429868698]
+  ],
+  "link_radii_m": [0.075, 0.065, 0.06, 0.055, 0.05, 0.045],
+  "safety_margin_m": 0.01,
+  "table": {
+    "object_id": "default_table",
+    "center_base_m": [0.0, 0.0, -0.035],
+    "size_xyz_m": [1.2, 1.0, 0.07]
+  },
+  "table_ignored_links": ["link_0"],
+  "self_collision_ignored_pairs": [
+    ["link_0", "link_2"],
+    ["link_3", "link_5"]
+  ],
+  "notes": [
+    "Joint origins are extracted from the current GLB hierarchy.",
+    "Link radii, table dimensions, tool geometry and mounting exclusion require physical measurement.",
+    "Ignored self-collision pairs represent overlapping base/shoulder and wrist housings in the capsule approximation.",
+    "A clear result is model evidence only and must not be treated as physical collision clearance."
+  ]
+}

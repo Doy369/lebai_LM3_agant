@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Callable, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -17,6 +17,7 @@ from .models import (
     ExecutePickRequest,
     GenericMessageResponse,
     JogTCPRequest,
+    PlanPreviewAckRequest,
     PlanPickRequest,
     SafetyProbeRequestModel,
 )
@@ -52,7 +53,12 @@ def create_app(config: Optional[WebBackendConfig] = None) -> FastAPI:
 
     @app.middleware("http")
     async def require_control_token(request: Request, call_next: Callable[..., object]) -> Response:
-        if request.url.path.startswith(protected_paths):
+        if runtime_config.read_only and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "后端处于真机只读模式，所有写请求已禁用。"},
+            )
+        if not runtime_config.read_only and request.url.path.startswith(protected_paths):
             expected = runtime_config.web_token
             supplied = request.headers.get("X-Lebai-Token", "")
             if expected and not hmac.compare_digest(supplied, expected):
@@ -138,6 +144,19 @@ def create_app(config: Optional[WebBackendConfig] = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return Response(content=payload, media_type="image/jpeg")
 
+    @app.get("/api/camera/objects", response_model=GenericMessageResponse, tags=["camera"])
+    def camera_objects(response: Response, target: str = Query(default="", max_length=500)) -> dict:
+        response.headers['Cache-Control'] = 'no-store'
+        return _call_service(lambda: service.recognize_camera_objects(target))
+
+    @app.get("/api/camera/latest-objects.jpg", tags=["camera"])
+    def latest_camera_objects_image() -> Response:
+        try:
+            payload = service.latest_camera_objects_jpeg()
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return Response(content=payload, media_type='image/jpeg', headers={'Cache-Control': 'no-store'})
+
     @app.get("/api/robot/status", response_model=GenericMessageResponse, tags=["robot"])
     def robot_status(response: Response) -> dict:
         response.headers["Cache-Control"] = "no-store"
@@ -210,6 +229,10 @@ def create_app(config: Optional[WebBackendConfig] = None) -> FastAPI:
     @app.post("/api/pipeline/grasp-from-camera", response_model=GenericMessageResponse, tags=["pipeline"])
     def grasp_from_camera(request: CameraGraspRequest) -> dict:
         return _call_service(lambda: service.grasp_from_camera(request))
+
+    @app.post("/api/pipeline/confirm-plan-preview", response_model=GenericMessageResponse, tags=["pipeline"])
+    def confirm_plan_preview(request: PlanPreviewAckRequest) -> dict:
+        return _call_service(lambda: service.confirm_plan_preview(request))
 
     return app
 

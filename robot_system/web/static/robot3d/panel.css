@@ -4,8 +4,25 @@
 .r3-toolbar button, .r3-toolbar select { padding: 8px 12px; border-radius: 8px; border: 1px solid #bccdd1; background: #f4f8fa; color: #203b45; cursor: pointer; }
 .r3-toolbar button:disabled { opacity: .45; cursor: default; }
 .r3-views { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(230px, 1fr); gap: 16px; }
-.r3-main { height: 420px; border-radius: 12px; overflow: hidden; background: #eaf0f3; }
+.r3-main { position: relative; height: 420px; border-radius: 12px; overflow: hidden; background: #eaf0f3; }
 .r3-main canvas { display: block; width: 100%; height: 100%; }
+.r3-showcase { margin: 12px 0; padding: 0 12px; border: 1px solid #497984; border-radius: 10px; }
+.r3-showcase .r3-toolbar { margin: 10px 0; }
+.r3-showcase .r3-caption { margin: 8px 0; }
+#r3-showcase-play { background: #177889; color: white; border-color: #177889; }
+.r3-showcase-overlay { position: absolute; z-index: 1; top: 12px; left: 12px; padding: 10px 14px; min-width: 180px; border-radius: 9px; background: rgba(21,49,59,.88); color: white; font-size: 13px; pointer-events: none; }
+.r3-showcase-overlay[hidden] { display: none; }
+.r3-showcase-overlay progress { display: block; margin-top: 8px; width: 100%; height: 5px; accent-color: #4fd4c1; }
+.r3-grasp { margin: 12px 0; padding: 0 12px; border: 1px solid #5ea59a; border-radius: 10px; background: rgba(34,96,88,.12); }
+.r3-grasp .r3-toolbar { gap: 8px; margin: 10px 0; }
+.r3-grasp .r3-caption { margin: 8px 0; }
+.r3-grasp-controls { border: 0; padding: 0; margin: 0; min-width: 0; }
+#r3-grasp-close { background: #177889; color: white; border-color: #177889; }
+#r3-solid-status { border: 1px solid #5ea59a; border-radius: 8px; padding: 7px 10px; color: #a8dfcb; }
+#r3-solid-status[data-blocked="true"] { border-color: #dda15c; color: #ffcf88; background: rgba(150,86,15,.16); }
+.r3-grasp-controls:disabled { opacity: .65; }
+.r3-physics-controls { border: 0; padding: 0; margin: 0; min-width: 0; }
+.r3-physics-controls:disabled { opacity: .6; }
 .r3-camera canvas { width: 100%; height: auto; display: block; border-radius: 10px; }
 .r3-camera { align-self: start; }
 .r3-caption, .r3-notice { font-size: 13px; line-height: 1.65; color: #afc2c8; }
@@ -23,5 +40,57 @@
 .r3-panel-input { font-family: ui-monospace, monospace; }
 .r3-config { margin-top: 15px; }
 .r3-readout { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-@media(max-width: 850px) { .r3-views { grid-template-columns: 1fr; } .r3-joints { grid-template-columns: repeat(2,minmax(0,1fr)); } .r3-main { height: 340px; } }
-@media(max-width: 480px) { .r3-joints, .r3-trajectory { grid-template-columns: 1fr; } }
+.r3-physics { padding: 14px; margin: 16px 0; border-radius: 10px; border: 1px solid #7eafb5; background: #eaf4f6; color: #203b45; }
+.r3-physics summary { cursor: pointer; font-weight: 700; }
+.r3-physics .r3-caption { color: #47636c; }
+.r3-physics .r3-error { color: #a82d22; }
+.r3-physics-inputs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; font-size: 12px; }
+.r3-physics-inputs label { min-width: 0; }
+.r3-physics-inputs input, .r3-physics-inputs select { margin-top: 4px; }
+.r3-collision-panel { margin: 12px 0; padding: 12px; border: 1px solid #bfd0d5; border-radius: 10px; background: rgba(234,240,243,.72); color: #203b45; }
+.r3-collision-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.r3-collision-head span { padding: 4px 8px; border-radius: 999px; background: #dce8eb; font-size: 12px; }
+.r3-collision-panel[data-kind="approximate"] { border-color: #d9a62e; background: #fff7df; }
+.r3-collision-panel[data-kind="approximate"] .r3-collision-head span { background: #ffe8a8; color: #745b26; }
+.r3-collision-panel[data-kind="collision"] { border-color: #d94a3d; background: #ffebe8; }
+.r3-collision-panel[data-kind="collision"] .r3-collision-head span { background: #ffd0ca; color: #982d20; }
+.r3-collision-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px 14px; margin-top: 10px; font-size: 12px; }
+.r3-collision-grid span { min-width: 0; color: #627780; }
+.r3-collision-grid b { display: block; margin-top: 2px; color: #203b45; overflow-wrap: anywhere; }
+@media(max-width: 850px) { .r3-views { grid-template-columns: 1fr; } .r3-joints, .r3-physics-inputs { grid-template-columns: repeat(2,minmax(0,1fr)); } .r3-main { height: 340px; } }
+@media(max-width: 480px) { .r3-joints, .r3-trajectory, .r3-collision-grid { grid-template-columns: 1fr; } }
+
+/* Camera and real-object controls, shared with the standalone scene. */
+.r3-camera-tools { margin-top: 0; gap: 8px; }
+.r3-camera-tools label { flex: 1; }
+.r3-camera-tools select { min-width: 100px; }
+.r3-camera-options { display: grid; gap: 9px; margin: 12px 0; font-size: 13px; color: #b9d9d4; }
+.r3-camera-options label:first-child { display: grid; grid-template-columns: 1fr 1.1fr auto; gap: 8px; align-items: center; }
+.r3-camera-options input[type="range"] { width: 100%; min-width: 0; accent-color: #35bca9; }
+.r3-camera-dialog { width: min(960px, 94vw); max-height: 94vh; padding: 16px; border: 1px solid #4e9487; border-radius: 14px; background: #142d35; color: #e5f1f3; }
+.r3-camera-dialog::backdrop { background: rgba(0, 10, 18, .75); }
+.r3-camera-dialog .r3-toolbar { justify-content: space-between; margin-top: 0; }
+.r3-error:empty { display: none; }
+.r3-object-settings { margin: 12px 0; padding: 10px 12px; border: 1px solid #42746b; border-radius: 8px; }
+.r3-object-settings summary { cursor: pointer; color: #9ce0c5; }
+.r3-object-settings fieldset { border: 0; padding: 10px 0 0; margin: 0; min-width: 0; }
+.r3-object-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.r3-object-inputs label { display: grid; gap: 6px; font-size: 13px; }
+.r3-object-inputs input { width: 100%; min-width: 0; padding: 7px; border: 1px solid #65958c; border-radius: 6px; background: #e9f4f0; color: #16362c; }
+.r3-object-inputs input[type="color"] { height: 35px; padding: 3px; }
+button[aria-pressed="true"] { background: #68d1ab; color: #12382c; }
+[hidden] { display: none !important; }
+.standalone-section { margin: 14px 0; padding: 14px 16px; border: 1px solid #35515b; border-radius: 10px; background: rgba(18,42,49,.65); }
+.standalone-section > summary { cursor: pointer; font-weight: 600; }
+.standalone-section textarea { margin-top: 14px; }
+.r3-real-section fieldset { border: 0; padding: 10px 0; margin: 0; }
+.r3-real-section select { min-width: 0; width: 100%; padding: 7px; color: #16362c; border-radius: 6px; background: #e9f4f0; }
+.r3-real-section input[type="file"] { max-width: 210px; }
+.r3-real-section input[type="text"], #r3-real-command { min-width: 180px; padding: 7px; border: 1px solid #65958c; border-radius: 6px; background: #e9f4f0; color: #16362c; }
+.r3-real-results { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 14px; }
+.r3-real-results figure { flex: 0 1 360px; margin: 0; }
+.r3-real-results img { display: block; width: 100%; border-radius: 8px; }
+.r3-real-results figcaption { color: #afc2c8; font-size: 12px; margin-top: 6px; }
+.r3-real-results > div { flex: 1; min-width: 240px; overflow-x: auto; }
+.r3-real-results table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.r3-real-results td, .r3-real-results th { padding: 9px; text-align: left; border-bottom: 1px solid #35515b; }

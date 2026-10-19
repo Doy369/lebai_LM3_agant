@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lebai Robot Console</title>
     <link rel="stylesheet" href="./styles.css" />
-    <link rel="stylesheet" href="./robot3d/panel.css" />
+    <link rel="stylesheet" href="./robot3d/panel.css?v=20261012-realcam" />
   </head>
   <body>
     <div class="page-shell">
@@ -333,7 +333,7 @@
             <button id="probeFromCameraButton" class="button button-secondary">执行当前画面安全探测</button>
             <button id="pickFromCameraButton" class="button button-warning">执行当前画面完整抓取</button>
           </div>
-          <p class="hint">完整抓取必须先完成安全探测，并在一次性探测锁有效期内执行。</p>
+          <p class="hint">完整抓取必须先完成安全探测，并等待同一份统一抓取计划在三维场景中完整播放；碰撞状态为 unknown 时，预演只证明计划可播放。</p>
 
           <div class="result-stack">
             <article class="result-card">
@@ -442,6 +442,6 @@
       </main>
     </div>
 
-    <script src="./app.js?v=20260715" type="module"></script>
+    <script src="./app.js?v=20261013-image-objects2" type="module"></script>
   </body>
 </html>

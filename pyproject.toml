@@ -52,8 +52,10 @@ include = ["apps*", "robot_system*", "tools*", "world_model_experiment*"]
 
 [tool.setuptools.package-data]
 robot_system = [
+  "planning/*.json",
   "web/static/*.html", "web/static/*.js", "web/static/*.css",
   "web/static/robot3d/*.js", "web/static/robot3d/*.css", "web/static/robot3d/*.json",
   "web/static/robot3d/assets/*", "web/static/robot3d/vendor/*",
+  "web/static/robot3d/examples/*.json",
 ]
 world_model_experiment = ["config/*.json"]

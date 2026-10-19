@@ -18,6 +18,6 @@
     "base_T_tcp": {"source": "GET /api/robot/status data.kin_data.actual_tcp_pose", "status": "conversion_defined_not_rendered_as_model_tcp"},
     "flange_T_tcp": {"source": null, "status": "missing_do_not_assume_identity"}
   },
-  "jointMapping": {"source": "dtsci reference axes; actual binary node hierarchy checked", "localAxes": ["y","z","z","z","y","z"], "directions": [1,1,1,1,1,1], "zeroOffsetsRad": [0,0,0,0,0,0], "formula": "q_import * axisAngle(axis_local, direction*q_sdk + zeroOffsetRad)", "status": "axes_signs_and_zero_offsets_pending_physical_calibration"},
+  "jointMapping": {"source": "dtsci reference axes; actual binary node hierarchy checked; operator side/wrist images plus Lebai official ROS lm3_macro.xacro; operator isolated-motion checks on 2026-09-13", "localAxes": ["y","z","z","z","y","z"], "directions": [1,1,1,1,-1,1], "referenceJointsRad": [0.004793689962142629,-1.4965900061809287,0.3151371781112564,-1.576452880950225,0.39308257689569553,-0.006231796950785417], "referenceModelDeltaRad": [0,0,0.3839724354387525,0,0.39308257689569553,-0.006231796950785417], "zeroOffsetsRad": [-0.004793689962142629,1.4965900061809287,0.0688352573274961,1.576452880950225,0.7861651537913911,0], "formula": "q_import * axisAngle(axis_local, direction*q_sdk + zeroOffsetRad)", "status": "joint1_joint2_joint5_directions_operator_verified_joint3_joint4_joint6_pending"},
   "displayCentering": "Adjust free camera position/target only; never subtract model bounding-box center from physical transforms"
 }

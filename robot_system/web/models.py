@@ -102,6 +102,13 @@ class CameraGraspRequest(SafeBaseModel):
     place_post_place_offset_m: float = Field(default=0.10, ge=0.0, description="Place retreat offset")
 
 
+class PlanPreviewAckRequest(SafeBaseModel):
+    """Acknowledge that the browser finished the exact compiled plan preview."""
+
+    probe_lock_id: str = Field(..., min_length=1, max_length=300)
+    plan_id: str = Field(..., pattern=r"^grasp_[0-9a-f]{24}$")
+
+
 class AutoCalibrationRunRequest(SafeBaseModel):
     """Automatic calibration request."""
 

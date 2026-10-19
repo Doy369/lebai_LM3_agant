@@ -10,6 +10,12 @@ Retrieved 2026-09-07. No production deployment was performed.
 - SHA-256: `dc4f5b2a2e599d696498b5e44ec5964b945644495eb43b9816ad8ca858e7ec4f`
 - Size: 3,376,080 bytes; Blender glTF exporter 4.4.56, glTF 2.0.
 - Original reference: https://dtsci.cn/robot/lebai/ (inspected rendered page and existing source snapshot under `artifacts/lebai_model_review_20260907/online_page.html`). Direct binary download from that host failed with TLS connection closure; the user supplied the GitHub source instead. Byte identity with the currently hosted dtsci binary was **not** verified.
+
+## Lebai official LM3 kinematic reference
+
+- Source: https://github.com/lebai-robotics/lebai-ros-sdk/blob/humble-dev/lebai_lm3_support/urdf/lm3_macro.xacro
+- License: Apache-2.0 (repository license).
+- Use: cross-check of the six independent joint axes and the Joint5/Joint6 wrist chain only; this project does not redistribute the ROS meshes.
 - No LICENSE file or license metadata was found in the supplied repository/model. The model is included for this user's requested local integration; no open-source license, redistribution right or third-party authorship is asserted. Confirm original model rights before redistributing or publishing it. This notice is not a replacement license.
 - `model-inspection.json` is generated from this exact binary by `node tools/inspect_robot_model.mjs`; dimensions are mesh coordinates, not measured robot dimensions.
 

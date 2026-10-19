@@ -1,0 +1,10 @@
+{
+  "schema": "virtual-grasp-real-objects/v1",
+  "source": "sample",
+  "units": "m",
+  "frame": "robot-base",
+  "snapshotId": "offline-test-only",
+  "objects": [
+    {"id": "R1", "label": "测试绿色物块", "positionBaseM": [-0.30, -0.24, 0.04], "pointKind": "surface", "sizeM": null, "yawRad": 0}
+  ]
+}

@@ -83,6 +83,7 @@ class QwenPickAgent:
                 decision = self._parse_model_decision(
                     raw_text=model_response,
                     candidates=candidates,
+                    user_command=user_command,
                 )
                 decision.candidate_count = len(candidates)
                 decision.source = "qwen"
@@ -235,14 +236,6 @@ class QwenPickAgent:
                 "reason": "string",
                 "execution_summary": "string",
                 "matched_filters": ["string", "..."],
-                "grasp_pose": {
-                    "position": {"x": "float", "y": "float", "z": "float"},
-                    "roll": "float",
-                    "pitch": "float",
-                    "yaw": "float",
-                    "approach_vector": {"x": "float", "y": "float", "z": "float"},
-                    "pre_grasp_offset_m": "float",
-                },
             },
         }
 
@@ -307,35 +300,74 @@ class QwenPickAgent:
         self,
         raw_text: str,
         candidates: List[ObjectCandidate],
+        user_command: str = "",
     ) -> AgentDecision:
         payload = self._extract_json(raw_text)
         candidate_map = {item.object_id: item for item in candidates}
 
-        selected_object_id = payload.get("selected_object_id")
+        success = bool(payload.get("success"))
+        selected_object_id_raw = payload.get("selected_object_id")
+        selected_object_id = None if selected_object_id_raw is None else str(selected_object_id_raw)
         if selected_object_id and selected_object_id not in candidate_map:
             raise ValueError(f"模型返回了未知 object_id: {selected_object_id}")
 
-        selected_candidate = candidate_map.get(selected_object_id) if selected_object_id else None
-        grasp_pose = self._parse_grasp_pose(payload.get("grasp_pose"), selected_candidate)
-        selected_name = None
-        if selected_candidate is not None:
-            selected_name = selected_candidate.display_name or selected_candidate.name
-        elif payload.get("selected_object_name"):
-            selected_name = str(payload.get("selected_object_name"))
-
-        success = bool(payload.get("success"))
         reason = str(payload.get("reason", "")).strip() or "Qwen 未提供原因。"
         summary = str(payload.get("execution_summary", "")).strip() or "Qwen 未提供执行摘要。"
-        matched_filters = payload.get("matched_filters") or []
+        matched_filters = [str(item) for item in (payload.get("matched_filters") or [])]
+
+        if not success:
+            return AgentDecision(
+                success=False,
+                selected_object_id=None,
+                selected_object_name=None,
+                grasp_pose=None,
+                reason=reason,
+                execution_summary="未执行抓取。",
+                matched_filters=matched_filters,
+                metadata={"decision_status": "reject"},
+            )
+        if selected_object_id is None:
+            raise ValueError("模型声明 success=true 但没有返回有效 selected_object_id")
+
+        selected_candidate = candidate_map.get(selected_object_id) if selected_object_id else None
+        assert selected_candidate is not None
+        allowed, semantic_filters, rejection = self._filter_candidates_for_command(user_command, candidates)
+        if rejection:
+            return self._build_rejection_decision(
+                reason=rejection,
+                candidate_count=len(candidates),
+                source="qwen",
+                decision_status="reject",
+            )
+        if selected_candidate not in allowed:
+            return self._build_rejection_decision(
+                reason=f"Qwen 选择的 object_id={selected_object_id} 不满足指令中的确定性属性约束。",
+                candidate_count=len(candidates),
+                source="qwen",
+                decision_status="reject",
+            )
+        if len(allowed) > 1 and not self._has_spatial_selector(user_command):
+            return self._build_rejection_decision(
+                reason=f"指令仍对应 {len(allowed)} 个候选目标，需要补充颜色、位置或其他区分条件。",
+                candidate_count=len(candidates),
+                source="qwen",
+                decision_status="clarify",
+            )
+
+        # Execution coordinates are always derived from the selected candidate.
+        # A model-provided grasp_pose is intentionally ignored.
+        grasp_pose = selected_candidate.grasp_pose or self._default_grasp_pose(selected_candidate)
+        selected_name = selected_candidate.display_name or selected_candidate.name
 
         return AgentDecision(
-            success=success,
+            success=True,
             selected_object_id=selected_object_id,
             selected_object_name=selected_name,
             grasp_pose=grasp_pose,
             reason=reason,
             execution_summary=summary,
-            matched_filters=[str(item) for item in matched_filters],
+            matched_filters=list(dict.fromkeys([*matched_filters, *semantic_filters])),
+            metadata={"decision_status": "select", "pose_source": "selected_candidate"},
         )
 
     def _parse_image_plan(
@@ -445,29 +477,21 @@ class QwenPickAgent:
         scene_context: Dict[str, Any],
     ) -> AgentDecision:
         normalized_command = self._normalize_text(user_command)
-        matched_filters: List[str] = []
-        filtered = list(candidates)
-
-        name_filtered = [item for item in filtered if self._matches_name_or_tag(normalized_command, item)]
-        if name_filtered:
-            filtered = name_filtered
-            matched_filters.append("name_or_tag")
-
-        color_filtered = [
-            item for item in filtered if item.color and self._normalize_text(item.color) in normalized_command
-        ]
-        if color_filtered:
-            filtered = color_filtered
-            matched_filters.append("color")
-
-        if not filtered:
-            best = max(candidates, key=lambda item: item.confidence)
-            return self._build_success_decision(
-                candidate=best,
-                matched_filters=["fallback_confidence"],
-                reason="没有找到完全匹配的名称/颜色条件，已回退到置信度最高的候选物体。",
-                source="rule",
+        filtered, matched_filters, rejection = self._filter_candidates_for_command(user_command, candidates)
+        if rejection:
+            return self._build_rejection_decision(
+                reason=rejection,
                 candidate_count=len(candidates),
+                source="rule",
+                metadata={"scene_context": scene_context},
+            )
+
+        if len(filtered) > 1 and not self._has_spatial_selector(user_command):
+            return self._build_rejection_decision(
+                reason=f"指令仍对应 {len(filtered)} 个候选目标，需要补充颜色、位置或其他区分条件。",
+                candidate_count=len(candidates),
+                source="rule",
+                decision_status="clarify",
                 metadata={"scene_context": scene_context},
             )
 
@@ -500,6 +524,28 @@ class QwenPickAgent:
             metadata={"scene_context": scene_context},
         )
 
+    def _build_rejection_decision(
+        self,
+        reason: str,
+        candidate_count: int,
+        source: str,
+        decision_status: str = "reject",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> AgentDecision:
+        decision_metadata = dict(metadata or {})
+        decision_metadata["decision_status"] = decision_status
+        return AgentDecision(
+            success=False,
+            selected_object_id=None,
+            selected_object_name=None,
+            grasp_pose=None,
+            reason=reason,
+            execution_summary="未执行抓取。",
+            candidate_count=candidate_count,
+            source=source,
+            metadata=decision_metadata,
+        )
+
     def _build_success_decision(
         self,
         candidate: ObjectCandidate,
@@ -525,8 +571,84 @@ class QwenPickAgent:
             matched_filters=matched_filters,
             candidate_count=candidate_count,
             source=source,
-            metadata=metadata or {},
+            metadata={**(metadata or {}), "decision_status": "select", "pose_source": "selected_candidate"},
         )
+
+    _COLOR_ALIASES = {
+        "red": ("红", "红色", "red"),
+        "yellow": ("黄", "黄色", "yellow"),
+        "green": ("绿", "绿色", "green"),
+        "blue": ("蓝", "蓝色", "blue"),
+        "white": ("白", "白色", "white"),
+        "black": ("黑", "黑色", "black"),
+        "orange": ("橙", "橙色", "orange"),
+        "purple": ("紫", "紫色", "purple"),
+    }
+
+    def _filter_candidates_for_command(
+        self,
+        user_command: str,
+        candidates: Sequence[ObjectCandidate],
+    ) -> tuple[List[ObjectCandidate], List[str], Optional[str]]:
+        normalized_command = self._normalize_text(user_command)
+        filtered = list(candidates)
+        matched_filters: List[str] = []
+
+        requested_colors = [
+            color
+            for color, aliases in self._COLOR_ALIASES.items()
+            if any(self._normalize_text(alias) in normalized_command for alias in aliases)
+        ]
+        if requested_colors:
+            color_filtered = [
+                item for item in filtered
+                if self._canonical_color(item.color) in requested_colors
+            ]
+            if not color_filtered:
+                return [], [], f"候选目标中不存在指令要求的颜色：{', '.join(requested_colors)}。"
+            filtered = color_filtered
+            matched_filters.append(f"color={requested_colors[0]}")
+
+        name_filtered = [item for item in filtered if self._matches_name_or_tag(normalized_command, item)]
+        any_name_match = any(self._matches_name_or_tag(normalized_command, item) for item in candidates)
+        if any_name_match:
+            if not name_filtered:
+                return [], matched_filters, "候选目标的名称与颜色约束不能同时满足。"
+            filtered = name_filtered
+            matched_filters.append("name_or_tag")
+        elif self._has_unmatched_specific_description(normalized_command):
+            return [], matched_filters, "指令包含候选列表中无法验证的目标描述，已拒绝回退到其他物体。"
+
+        return filtered, matched_filters, None
+
+    def _canonical_color(self, color: Optional[str]) -> Optional[str]:
+        if not color:
+            return None
+        normalized = self._normalize_text(color)
+        for canonical, aliases in self._COLOR_ALIASES.items():
+            if normalized == canonical or any(normalized == self._normalize_text(alias) for alias in aliases):
+                return canonical
+        return normalized
+
+    def _has_spatial_selector(self, user_command: str) -> bool:
+        normalized = self._normalize_text(user_command)
+        return any(term in normalized for term in ("最近", "nearest", "closest", "最左", "leftmost", "最右", "rightmost", "最前", "frontmost"))
+
+    def _has_unmatched_specific_description(self, normalized_command: str) -> bool:
+        residual = normalized_command
+        removable = [
+            "请", "帮我", "帮", "我", "把", "给", "想要", "需要", "可以", "能否", "一下",
+            "抓取", "抓起", "拿起", "拾取", "捡起", "选择", "拿", "取", "要", "的", "一个",
+            "这个", "那个", "目标", "物体", "物品", "东西", "对象", "最近", "最左", "最右", "最前",
+            "左边", "右边", "前面", "nearest", "closest", "leftmost", "rightmost", "frontmost", "please",
+            "pick", "grasp", "select", "the", "a", "an", "object", "target",
+        ]
+        for aliases in self._COLOR_ALIASES.values():
+            removable.extend(aliases)
+        for term in sorted({self._normalize_text(item) for item in removable}, key=len, reverse=True):
+            residual = residual.replace(term, "")
+        residual = re.sub(r"[^0-9a-z\u4e00-\u9fff]+", "", residual)
+        return bool(residual)
 
     def _default_grasp_pose(self, candidate: ObjectCandidate) -> GraspPose:
         return GraspPose(

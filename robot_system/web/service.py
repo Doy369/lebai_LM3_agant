@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import base64
 import copy
@@ -31,6 +31,7 @@ from robot_system.control import (
 from robot_system.llm import QwenPickAgent
 from robot_system.llm.types import GraspPose, ImageTargetPlan, Pose3D
 from robot_system.pipeline import PickExecutor, PickExecutorConfig
+from robot_system.planning import CompiledGraspPlan, TrajectoryValidationReport
 from robot_system.vision import CalibrationBundle, Detection2D, OrbbecCameraConfig, OrbbecDepthCamera, VisionTransformer
 
 from .camera_feed import CameraFeed, CameraFeedConfig
@@ -43,6 +44,7 @@ from .models import (
     GraspPoseModel,
     JogTCPRequest,
     PlanPickRequest,
+    PlanPreviewAckRequest,
     Pose3DModel,
     SafetyProbeRequestModel,
 )
@@ -152,6 +154,7 @@ class WebBackendConfig:
     calibration_file: Path = Path("biaoding/eye_to_hand_result.json")
     robot_ip: str = "127.0.0.1"
     dry_run: bool = True
+    read_only: bool = False
     cors_origins: List[str] = field(default_factory=list)
     web_token: Optional[str] = None
     allow_real_motion: bool = False
@@ -170,14 +173,16 @@ class WebBackendConfig:
     tool_surface_offset_m: float = 0.185
 
     def __post_init__(self) -> None:
-        if not self.dry_run and not self.allow_real_motion:
+        if not self.dry_run and not self.read_only and not self.allow_real_motion:
             raise RuntimeError(
                 "真机模式需要显式设置 LEBAI_ALLOW_REAL_MOTION=YES；未确认时后端拒绝启动。"
             )
-        if not self.dry_run and not self.web_token:
+        if not self.dry_run and not self.read_only and not self.web_token:
             raise RuntimeError(
                 "真机模式需要设置 LEBAI_WEB_TOKEN，用于保护机械臂控制接口。"
             )
+        if self.read_only and self.allow_real_motion:
+            raise RuntimeError("只读模式不能同时启用 LEBAI_ALLOW_REAL_MOTION。")
         if self.probe_lock_ttl_sec <= 0.0:
             raise ValueError("probe_lock_ttl_sec 必须大于 0。")
         if self.probe_lock_joint_tolerance_rad <= 0.0:
@@ -191,6 +196,7 @@ class WebBackendConfig:
             calibration_file=Path(os.getenv("LEBAI_WEB_CALIBRATION_FILE", "biaoding/eye_to_hand_result.json")),
             robot_ip=os.getenv("LEBAI_ROBOT_IP", "127.0.0.1"),
             dry_run=_parse_bool(os.getenv("LEBAI_DRY_RUN"), True),
+            read_only=_parse_bool(os.getenv("LEBAI_READ_ONLY"), False),
             cors_origins=_parse_cors_origins(os.getenv("LEBAI_WEB_CORS_ORIGINS")),
             web_token=(os.getenv("LEBAI_WEB_TOKEN") or "").strip() or None,
             allow_real_motion=_parse_real_motion_confirmation(os.getenv("LEBAI_ALLOW_REAL_MOTION")),
@@ -258,6 +264,8 @@ class ProbeLockState:
     execution_target_joints: List[float]
     robot_joint_snapshot: Optional[List[float]]
     calibration_fingerprint: str
+    previewed_plan_id: Optional[str] = None
+    previewed_at: Optional[float] = None
 
 
 class RobotWebService:
@@ -272,8 +280,13 @@ class RobotWebService:
         self._latest_plan_image_jpeg: Optional[bytes] = None
         self._latest_snapshot_jpeg: Optional[bytes] = None
         self._latest_snapshot_id: Optional[str] = None
+        self._scene_detector = None
+        self._latest_camera_objects_image_jpeg: Optional[bytes] = None
+        self._scene_capture_lock = threading.Lock()
         self._latest_probe_lock: Optional[ProbeLockState] = None
         self._camera_io_lock = threading.Lock()
+        self._status_io_lock = threading.Lock()
+        self._status_controller: Optional[LebaiController] = None
         self._auto_calibration_lock = threading.Lock()
         self._motion_lock = threading.Lock()
         self._probe_lock_guard = threading.Lock()
@@ -292,6 +305,7 @@ class RobotWebService:
             "service": self.config.app_title,
             "version": self.config.app_version,
             "dry_run": self.config.dry_run,
+            "read_only": self.config.read_only,
             "robot_ip": self.config.robot_ip,
             "calibration_file": str(self.config.calibration_file),
             "calibration_file_exists": calibration_exists,
@@ -318,6 +332,7 @@ class RobotWebService:
                 "camera_matrix": bundle.camera_matrix.tolist(),
                 "dist_coeffs": bundle.dist_coeffs.reshape(-1).tolist(),
                 "base_T_camera": bundle.base_T_camera.tolist(),
+                "calibration_fingerprint": self._calibration_fingerprint(),
             },
         }
 
@@ -540,12 +555,48 @@ print(json.dumps(payload, ensure_ascii=False))
         with self._camera_io_lock:
             if self.depth_camera.sdk_available:
                 self.preview_camera.close()
-                self.depth_camera.close()
+                # 连续预览复用 SDK 流，避免每帧重新开流导致 Windows 驱动卡住。
+                # 规划、自检和关闭服务时仍会释放相机，保证独占采集。
                 try:
                     return self.depth_camera.capture_preview_jpeg()
-                finally:
+                except Exception:
                     self.depth_camera.close()
+                    raise
             return self.preview_camera.capture_frame_jpeg()
+
+    def recognize_camera_objects(self, target: str = "") -> Dict[str, Any]:
+        """Capture one RGB-D image and describe objects for the virtual scene only."""
+        from datetime import datetime, timezone
+        from robot_system.vision.scene_objects import LocalSceneDetector, locate_objects
+
+        with self._scene_capture_lock:
+            with self._camera_io_lock:
+                self.preview_camera.close()
+                snapshot = self.depth_camera.capture_snapshot()
+            if self._scene_detector is None:
+                self._scene_detector = LocalSceneDetector()
+            detections = self._scene_detector.detect(snapshot.color_bgr, target)
+            objects, skipped = locate_objects(snapshot, self._build_vision_transformer(), detections)
+            image = snapshot.color_bgr.copy()
+            for item in detections:
+                x1, y1, x2, y2 = item['bbox_xyxy']
+                cv2.rectangle(image, (x1, y1), (x2, y2), (30, 210, 230), 2)
+                cv2.putText(image, f"{item['className']} {item['confidence']:.0%}", (x1, max(20, y1 - 7)), cv2.FONT_HERSHEY_SIMPLEX, .7, (30, 210, 230), 2)
+            ok, encoded = cv2.imencode('.jpg', image)
+            if not ok:
+                raise RuntimeError('识别照片编码失败。')
+            self._latest_camera_objects_image_jpeg = encoded.tobytes()
+            capture = {'schema': 'virtual-grasp-real-objects/v1', 'source': 'real-camera', 'units': 'm', 'frame': 'robot-base',
+                       'snapshotId': snapshot.snapshot_id, 'capturedAt': datetime.fromtimestamp(snapshot.timestamp_ms / 1000, timezone.utc).isoformat(),
+                       'objects': objects, 'skipped': skipped, 'detector': 'local-opencv-yolox',
+                       'image_size_wh': list(snapshot.image_size_wh), 'motion_allowed': False,
+                       'note': '位置来自 RGB-D 与现有标定；形状用包围盒近似，默认高度为 4 cm。'}
+            return {'success': bool(objects), 'message': f'已识别并定位 {len(objects)} 个物体。' if objects else '当前图片没有识别到可定位的物体，请调整物体位置或识别目标。', 'data': capture}
+
+    def latest_camera_objects_jpeg(self) -> bytes:
+        if self._latest_camera_objects_image_jpeg is None:
+            raise FileNotFoundError('尚未识别相机图片。')
+        return self._latest_camera_objects_image_jpeg
 
     def latest_plan_frame_jpeg(self) -> bytes:
         if self._latest_plan_image_jpeg is not None:
@@ -554,40 +605,54 @@ print(json.dumps(payload, ensure_ascii=False))
             return self._latest_snapshot_jpeg
         raise FileNotFoundError("尚未生成基于当前画面的抓取规划。")
     def robot_status(self) -> Dict[str, Any]:
-        controller = self._build_status_controller()
-        try:
-            controller.connect()
-            status = controller.get_robot_status_summary()
-            kin_data = controller.get_kin_data()
-            # Server read completion time, not a hardware acquisition timestamp.
-            feedback_read_at_unix_ms = time.time_ns() // 1_000_000
-            saved_home_joint_pose = self._effective_home_joint_pose()
-            return {
-                "success": True,
-                "message": "机器人状态读取成功。",
-                "data": {
-                    "dry_run": self.config.dry_run,
-                    "robot_ip": self.config.robot_ip,
-                    "workspace": asdict(self.config.workspace),
-                    "motion": asdict(self.config.motion),
-                    "home_joint_pose": saved_home_joint_pose,
-                    "home_tcp_pose": self._runtime_state.get("home_tcp_pose"),
-                    "teach_mode_requested": bool(self._runtime_state.get("teach_mode_requested", False)),
-                    "runtime_state_file": str(self.config.runtime_state_file),
-                    "robot_state": status.get("robot_state"),
-                    "can_move": status.get("can_move"),
-                    "estop_reason": status.get("estop_reason"),
-                    "requires_manual_enable": status.get("requires_manual_enable"),
-                    "is_connected": status.get("is_connected"),
-                    "kin_data": kin_data,
-                    "feedback_read_at_unix_ms": feedback_read_at_unix_ms,
-                    "feedback_time_source": "server_read_completion",
-                    "joint_unit": "radian",
-                    "command_log": controller.command_log,
-                },
-            }
-        finally:
-            controller.disconnect()
+        persistent = self.config.read_only
+        with self._status_io_lock:
+            if persistent:
+                if self._status_controller is None:
+                    self._status_controller = self._build_status_controller()
+                controller = self._status_controller
+            else:
+                controller = self._build_status_controller()
+            try:
+                controller.connect()
+                status = controller.get_robot_status_summary()
+                kin_data = controller.get_kin_data()
+                # Server read completion time, not a hardware acquisition timestamp.
+                feedback_read_at_unix_ms = time.time_ns() // 1_000_000
+                saved_home_joint_pose = self._effective_home_joint_pose()
+                return {
+                    "success": True,
+                    "message": "机器人状态读取成功。",
+                    "data": {
+                        "dry_run": self.config.dry_run,
+                        "read_only": self.config.read_only,
+                        "robot_ip": self.config.robot_ip,
+                        "workspace": asdict(self.config.workspace),
+                        "motion": asdict(self.config.motion),
+                        "home_joint_pose": saved_home_joint_pose,
+                        "home_tcp_pose": self._runtime_state.get("home_tcp_pose"),
+                        "teach_mode_requested": bool(self._runtime_state.get("teach_mode_requested", False)),
+                        "runtime_state_file": str(self.config.runtime_state_file),
+                        "robot_state": status.get("robot_state"),
+                        "can_move": status.get("can_move"),
+                        "estop_reason": status.get("estop_reason"),
+                        "requires_manual_enable": status.get("requires_manual_enable"),
+                        "is_connected": status.get("is_connected"),
+                        "kin_data": kin_data,
+                        "feedback_read_at_unix_ms": feedback_read_at_unix_ms,
+                        "feedback_time_source": "server_read_completion",
+                        "joint_unit": "radian",
+                        "command_log": controller.command_log,
+                    },
+                }
+            except Exception:
+                if persistent:
+                    controller.disconnect()
+                    self._status_controller = None
+                raise
+            finally:
+                if not persistent:
+                    controller.disconnect()
 
     def plan_pick(self, request: PlanPickRequest) -> Dict[str, Any]:
         executor = self._build_executor()
@@ -850,6 +915,51 @@ print(json.dumps(payload, ensure_ascii=False))
                     descend_clearance_m=request.descend_clearance_m,
                 )
             )
+            compile_plan = getattr(controller, "compile_pick_and_place_from_locked_pick", None)
+            if callable(compile_plan):
+                locked_pick_pose = self._grasp_pose_from_dict(execution["target_pose"])
+                compiled_plan = compile_plan(
+                    PickPlaceRequest(
+                        pick_pose=locked_pick_pose,
+                        place_pose=self._convert_grasp_pose(request.drop_pose_override) if request.drop_pose_override else self.config.drop_pose,
+                        label=f"pick_{plan_data['snapshot_id']}",
+                        pre_grasp_offset_m=request.pick_pre_grasp_offset_m,
+                        post_grasp_offset_m=request.pick_post_grasp_offset_m,
+                        pre_place_offset_m=request.place_pre_place_offset_m,
+                        post_place_offset_m=request.place_post_place_offset_m,
+                        snapshot_id=str(plan_data["snapshot_id"]),
+                        target_object_id=str(
+                            plan_data.get("decision", {}).get("selected_object_name")
+                            or plan_data.get("decision", {}).get("selected_object_id")
+                            or "camera_target"
+                        ),
+                        calibration_fingerprint=self._calibration_fingerprint(),
+                        plan_ttl_ms=max(1, int(self.config.probe_lock_ttl_sec * 1000)),
+                    ),
+                    pick_pose=locked_pick_pose,
+                    pick_joints=execution["target_joints"],
+                )
+                plan_data["compiled_plan"] = compiled_plan.to_dict()
+                trajectory_validation = controller.validate_compiled_trajectory(
+                    compiled_plan,
+                    scene_context=request.scene_context,
+                )
+                if trajectory_validation.kinematic_status != "pass":
+                    raise PermissionError(
+                        "统一抓取计划未通过连续轨迹运动学验证："
+                        + "; ".join(trajectory_validation.issues)
+                    )
+                if trajectory_validation.collision_status == "collision":
+                    plan_data["trajectory_validation"] = trajectory_validation.to_dict()
+                    plan_data["execution"] = execution
+                    plan_data["execution_source"] = "fresh_snapshot_collision_rejected"
+                    plan_data["robot_status_preflight"] = controller.get_robot_status_summary()
+                    return {
+                        "success": False,
+                        "message": "统一抓取计划检测到近似几何相交，未创建执行锁；已返回计划供三维界面定位碰撞姿态。",
+                        "data": plan_data,
+                    }
+                plan_data["trajectory_validation"] = trajectory_validation.to_dict()
             message = "已基于当前画面执行安全探测。"
             lock = self._store_probe_lock(plan_data=plan_data, execution=execution)
             plan_data["probe_lock_id"] = lock.probe_lock_id
@@ -1062,6 +1172,7 @@ print(json.dumps(payload, ensure_ascii=False))
                 "app_version": self.config.app_version,
                 "robot_ip": self.config.robot_ip,
                 "dry_run": self.config.dry_run,
+                "read_only": self.config.read_only,
                 "calibration_file": str(self.config.calibration_file),
                 "runtime_state_file": str(self.config.runtime_state_file),
                 "cors_origins": list(self.config.cors_origins),
@@ -1087,7 +1198,7 @@ print(json.dumps(payload, ensure_ascii=False))
         }
 
     def _pick_from_probe_lock(self, request: CameraGraspRequest) -> Dict[str, Any]:
-        lock = self._consume_probe_lock(request.probe_lock_id)
+        lock = self._consume_probe_lock(request.probe_lock_id, require_compiled_preview=True)
         plan_data = self._copy_probe_lock_plan_data(lock)
         controller = self._build_motion_controller()
         try:
@@ -1104,19 +1215,36 @@ print(json.dumps(payload, ensure_ascii=False))
                         "机械臂位置已偏离安全探测结束位置，探测锁已失效。"
                         f" max_joint_delta={max_joint_delta:.4f}rad"
                     )
-            execution = controller.pick_and_place_from_locked_pick(
-                PickPlaceRequest(
+            compiled_payload = plan_data.get("compiled_plan")
+            if isinstance(compiled_payload, dict) and hasattr(controller, "execute_compiled_plan"):
+                compiled_plan = CompiledGraspPlan.from_dict(compiled_payload)
+                if compiled_plan.snapshot_id != lock.snapshot_id:
+                    raise PermissionError("统一抓取计划与安全探测快照不一致。")
+                if compiled_plan.calibration_fingerprint != self._calibration_fingerprint():
+                    raise PermissionError("统一抓取计划使用的标定文件已经变化。")
+                validation_payload = plan_data.get("trajectory_validation")
+                if not isinstance(validation_payload, dict):
+                    raise PermissionError("统一抓取计划缺少连续轨迹验证报告。")
+                trajectory_validation = TrajectoryValidationReport.from_dict(validation_payload)
+                execution = controller.execute_compiled_plan(
+                    compiled_plan,
+                    trajectory_validation=trajectory_validation,
+                )
+                execution["pick_pose_source"] = "probe_lock_compiled_plan"
+            else:
+                execution = controller.pick_and_place_from_locked_pick(
+                    PickPlaceRequest(
+                        pick_pose=self._grasp_pose_from_dict(lock.execution_target_pose),
+                        place_pose=self._convert_grasp_pose(request.drop_pose_override) if request.drop_pose_override else self.config.drop_pose,
+                        label=f"pick_{lock.snapshot_id}",
+                        pre_grasp_offset_m=request.pick_pre_grasp_offset_m,
+                        post_grasp_offset_m=request.pick_post_grasp_offset_m,
+                        pre_place_offset_m=request.place_pre_place_offset_m,
+                        post_place_offset_m=request.place_post_place_offset_m,
+                    ),
                     pick_pose=self._grasp_pose_from_dict(lock.execution_target_pose),
-                    place_pose=self._convert_grasp_pose(request.drop_pose_override) if request.drop_pose_override else self.config.drop_pose,
-                    label=f"pick_{lock.snapshot_id}",
-                    pre_grasp_offset_m=request.pick_pre_grasp_offset_m,
-                    post_grasp_offset_m=request.pick_post_grasp_offset_m,
-                    pre_place_offset_m=request.place_pre_place_offset_m,
-                    post_place_offset_m=request.place_post_place_offset_m,
-                ),
-                pick_pose=self._grasp_pose_from_dict(lock.execution_target_pose),
-                pick_joints=lock.execution_target_joints,
-            )
+                    pick_joints=lock.execution_target_joints,
+                )
             plan_data["execution"] = execution
             plan_data["probe_lock_id"] = lock.probe_lock_id
             plan_data["execution_source"] = "probe_lock"
@@ -1125,6 +1253,28 @@ print(json.dumps(payload, ensure_ascii=False))
             return {"success": True, "message": "已复用最近一次安全探测执行完整抓取。", "data": plan_data}
         finally:
             controller.disconnect()
+
+    def confirm_plan_preview(self, request: PlanPreviewAckRequest) -> Dict[str, Any]:
+        with self._probe_lock_guard:
+            lock = self._validate_probe_lock_unlocked(request.probe_lock_id)
+            compiled_payload = lock.plan_data.get("compiled_plan")
+            if not isinstance(compiled_payload, dict):
+                raise PermissionError("当前安全探测锁没有统一抓取计划，无法确认预演。")
+            compiled_plan = CompiledGraspPlan.from_dict(compiled_payload)
+            if compiled_plan.plan_id != request.plan_id:
+                raise PermissionError("预演完成的 plan_id 与安全探测锁中的计划不一致。")
+            compiled_plan.assert_not_expired()
+            lock.previewed_plan_id = compiled_plan.plan_id
+            lock.previewed_at = time.time()
+        return {
+            "success": True,
+            "message": "已记录统一抓取计划预演完成。",
+            "data": {
+                "probe_lock_id": lock.probe_lock_id,
+                "plan_id": compiled_plan.plan_id,
+                "snapshot_id": lock.snapshot_id,
+            },
+        }
 
     def _store_probe_lock(self, plan_data: Dict[str, Any], execution: Dict[str, Any]) -> ProbeLockState:
         target_pose = execution.get("target_pose")
@@ -1162,9 +1312,19 @@ print(json.dumps(payload, ensure_ascii=False))
         with self._probe_lock_guard:
             return self._validate_probe_lock_unlocked(probe_lock_id)
 
-    def _consume_probe_lock(self, probe_lock_id: Optional[str]) -> ProbeLockState:
+    def _consume_probe_lock(
+        self,
+        probe_lock_id: Optional[str],
+        require_compiled_preview: bool = False,
+    ) -> ProbeLockState:
         with self._probe_lock_guard:
             lock = self._validate_probe_lock_unlocked(probe_lock_id)
+            if require_compiled_preview:
+                compiled_payload = lock.plan_data.get("compiled_plan")
+                if isinstance(compiled_payload, dict):
+                    plan_id = str(compiled_payload.get("plan_id") or "")
+                    if not plan_id or lock.previewed_plan_id != plan_id:
+                        raise PermissionError("统一抓取计划尚未完成虚拟预演，拒绝执行真机完整抓取。")
             self._latest_probe_lock = None
             return lock
 
@@ -1535,9 +1695,24 @@ print(json.dumps(payload, ensure_ascii=False))
                 item for item in filtered
                 if item.get("dominant_color") in desired_colors
             ]
-            if color_filtered:
-                filtered = color_filtered
-                matched_filters.append(f"color={desired_colors[0]}")
+            if not color_filtered:
+                return ImageTargetPlan(
+                    success=False,
+                    selected_object_name=None,
+                    reason=f"本地候选中不存在指令要求的颜色：{', '.join(desired_colors)}。",
+                    bbox_xyxy=None,
+                    center_uv=None,
+                    confidence=0.0,
+                    source="local-candidate",
+                    metadata={
+                        "candidates": candidates,
+                        "matched_filters": [],
+                        "decision_status": "reject",
+                        "model_error": model_error,
+                    },
+                )
+            filtered = color_filtered
+            matched_filters.append(f"color={desired_colors[0]}")
 
         if "最近" in user_command or "nearest" in normalized_command or "closest" in normalized_command:
             selected = min(filtered, key=lambda item: float(item.get("depth_hint_m", 999.0)))
@@ -1575,6 +1750,7 @@ print(json.dumps(payload, ensure_ascii=False))
                 "candidates": candidates,
                 "selected_candidate_id": str(selected["candidate_id"]),
                 "matched_filters": matched_filters,
+                "decision_status": "select",
                 "model_error": model_error,
             },
         )
@@ -2277,5 +2453,9 @@ print(json.dumps(payload, ensure_ascii=False))
         )
 
     def shutdown(self) -> None:
+        with self._status_io_lock:
+            if self._status_controller is not None:
+                self._status_controller.disconnect()
+                self._status_controller = None
         self.preview_camera.close()
         self.depth_camera.close()

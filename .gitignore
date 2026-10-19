@@ -49,3 +49,6 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+# Local image-recognition model weights (download with tools/download_scene_detector.py)
+models/*.onnx
+models/*.download

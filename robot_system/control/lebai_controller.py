@@ -4,9 +4,17 @@ import math
 import os
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from robot_system.llm.types import GraspPose, Pose3D
+from robot_system.planning import (
+    CompiledGraspPlan,
+    CompiledPlanStep,
+    PlanValidation,
+    TrajectoryValidationReport,
+    validate_model_collision,
+    validate_compiled_trajectory as sample_compiled_trajectory,
+)
 
 try:
     import lebai_sdk  # type: ignore
@@ -80,6 +88,12 @@ class PickPlaceRequest:
     post_grasp_offset_m: float = 0.10
     pre_place_offset_m: Optional[float] = None
     post_place_offset_m: float = 0.10
+    snapshot_id: str = "manual_or_debug"
+    target_object_id: str = "unknown_target"
+    calibration_fingerprint: str = "unknown_calibration"
+    model_version: str = "Lebai_LM3"
+    tool_version: str = "software_tcp_v1"
+    plan_ttl_ms: int = 30_000
 
 
 @dataclass
@@ -113,6 +127,7 @@ class LebaiControllerConfig:
     stop_system_on_disconnect: bool = False
     min_manipulation: float = 0.01
     singularity_joint5_threshold_rad: float = 0.10
+    compiled_plan_start_tolerance_rad: float = 0.12
     joint_limit_abs_rad: float = 6.10
     joint6_limit_abs_rad: float = 9.50
     wait_motion_timeout_sec: float = 60.0
@@ -592,6 +607,28 @@ class LebaiController:
             pick_pose_source="probe_lock",
         )
 
+    def compile_pick_and_place(self, request: PickPlaceRequest) -> CompiledGraspPlan:
+        """只编译和验证计划，不发送夹爪或运动指令。"""
+        pick_pose, pick_joints = self.resolve_grasp_pose(request.pick_pose, "pick_pose")
+        plan, _ = self._compile_pick_place_with_resolved_pick(request, pick_pose, pick_joints)
+        return plan
+
+    def compile_pick_and_place_from_locked_pick(
+        self,
+        request: PickPlaceRequest,
+        pick_pose: GraspPose,
+        pick_joints: Sequence[float],
+    ) -> CompiledGraspPlan:
+        """使用安全探测锁定的抓取位姿编译后续完整计划。"""
+        locked_pick_joints = [float(value) for value in pick_joints]
+        if len(locked_pick_joints) != 6:
+            raise ValueError(f"Locked pick joints must contain 6 values, got {locked_pick_joints}")
+        self.config.workspace.assert_contains(pick_pose.position, "pick_pose_locked")
+        self._check_joint_limits(locked_pick_joints, "pick_pose_locked")
+        self._check_singularity_risk(locked_pick_joints, "pick_pose_locked")
+        plan, _ = self._compile_pick_place_with_resolved_pick(request, pick_pose, locked_pick_joints)
+        return plan
+
     def _pick_and_place_with_resolved_pick(
         self,
         request: PickPlaceRequest,
@@ -599,6 +636,38 @@ class LebaiController:
         pick_joints: Sequence[float],
         pick_pose_source: str,
     ) -> Dict[str, Any]:
+        plan, resolved = self._compile_pick_place_with_resolved_pick(
+            request=request,
+            pick_pose=pick_pose,
+            pick_joints=pick_joints,
+        )
+        execution = self.execute_compiled_plan(plan)
+        result = {
+            **execution,
+            "label": request.label,
+            "pick_pose_source": pick_pose_source,
+            "pick_pose": pick_pose.to_dict(),
+            "place_pose": resolved["place_pose"].to_dict(),
+            "pick_pose_joints": [float(value) for value in pick_joints],
+            "pick_hover_pose": resolved["pick_hover_pose"].to_dict(),
+            "pick_hover_joints": list(resolved["pick_hover_joints"]),
+            "pick_retreat_pose": resolved["pick_retreat_pose"].to_dict(),
+            "pick_retreat_joints": list(resolved["pick_retreat_joints"]),
+            "place_pose_joints": list(resolved["place_joints"]),
+            "place_hover_pose": resolved["place_hover_pose"].to_dict(),
+            "place_hover_joints": list(resolved["place_hover_joints"]),
+            "place_retreat_pose": resolved["place_retreat_pose"].to_dict(),
+            "place_retreat_joints": list(resolved["place_retreat_joints"]),
+        }
+        self._log("pick_and_place_complete", {"label": request.label, "plan_id": plan.plan_id})
+        return result
+
+    def _compile_pick_place_with_resolved_pick(
+        self,
+        request: PickPlaceRequest,
+        pick_pose: GraspPose,
+        pick_joints: Sequence[float],
+    ) -> Tuple[CompiledGraspPlan, Dict[str, Any]]:
         place_pose, place_joints = self.resolve_grasp_pose(request.place_pose, "place_pose")
         pick_hover = self._build_offset_pose(
             pick_pose,
@@ -645,37 +714,150 @@ class LebaiController:
             "place_retreat",
             reference_joints=place_joints,
         )
-
-        self.open_gripper()
-        self.move_joint(pick_hover_joints)
-        self.move_linear(self._pose_to_robot_dict(pick_pose))
-        self.close_gripper()
-        self.move_linear(self._pose_to_robot_dict(pick_retreat_pose))
-        self.move_joint(place_hover_joints)
-        self.move_linear(self._pose_to_robot_dict(place_pose))
-        self.open_gripper()
-        self.move_linear(self._pose_to_robot_dict(place_retreat_pose))
-
-        result = {
-            "success": True,
-            "label": request.label,
-            "command_log": self.command_log,
-            "pick_pose_source": pick_pose_source,
-            "pick_pose": pick_pose.to_dict(),
-            "place_pose": place_pose.to_dict(),
-            "pick_pose_joints": [float(value) for value in pick_joints],
-            "pick_hover_pose": pick_hover_pose.to_dict(),
-            "pick_hover_joints": [float(value) for value in pick_hover_joints],
-            "pick_retreat_pose": pick_retreat_pose.to_dict(),
-            "pick_retreat_joints": [float(value) for value in pick_retreat_joints],
-            "place_pose_joints": [float(value) for value in place_joints],
-            "place_hover_pose": place_hover_pose.to_dict(),
-            "place_hover_joints": [float(value) for value in place_hover_joints],
-            "place_retreat_pose": place_retreat_pose.to_dict(),
-            "place_retreat_joints": [float(value) for value in place_retreat_joints],
+        start_joints = self.get_actual_joint_pose()
+        grip_duration = max(float(self.config.gripper.wait_after_action_sec), 0.1)
+        steps = (
+            CompiledPlanStep("01_prepare_open", "prepare_open", "gripper_open", grip_duration),
+            CompiledPlanStep.move("02_approach_pick", "approach_pick", "movej", pick_hover_pose, pick_hover_joints, 2.0),
+            CompiledPlanStep.move("03_descend_pick", "descend_pick", "movel", pick_pose, pick_joints, 1.5),
+            CompiledPlanStep("04_grasp", "grasp", "gripper_close", grip_duration),
+            CompiledPlanStep.move("05_retreat_pick", "retreat_pick", "movel", pick_retreat_pose, pick_retreat_joints, 1.5),
+            CompiledPlanStep.move("06_transfer", "transfer", "movej", place_hover_pose, place_hover_joints, 2.0),
+            CompiledPlanStep.move("07_descend_place", "descend_place", "movel", place_pose, place_joints, 1.5),
+            CompiledPlanStep("08_release", "release", "gripper_open", grip_duration),
+            CompiledPlanStep.move("09_retreat_place", "retreat_place", "movel", place_retreat_pose, place_retreat_joints, 1.5),
+        )
+        plan = CompiledGraspPlan.build(
+            snapshot_id=request.snapshot_id,
+            target_object_id=request.target_object_id,
+            calibration_fingerprint=request.calibration_fingerprint,
+            model_version=request.model_version,
+            tool_version=request.tool_version,
+            start_joints_rad=start_joints,
+            steps=steps,
+            ttl_ms=request.plan_ttl_ms,
+            validation=PlanValidation(
+                ik="pass",
+                workspace="pass",
+                joint_limits="pass",
+                collision="unknown",
+                camera_alignment="pending",
+            ),
+        )
+        resolved = {
+            "place_pose": place_pose,
+            "place_joints": tuple(float(value) for value in place_joints),
+            "pick_hover_pose": pick_hover_pose,
+            "pick_hover_joints": tuple(float(value) for value in pick_hover_joints),
+            "pick_retreat_pose": pick_retreat_pose,
+            "pick_retreat_joints": tuple(float(value) for value in pick_retreat_joints),
+            "place_hover_pose": place_hover_pose,
+            "place_hover_joints": tuple(float(value) for value in place_hover_joints),
+            "place_retreat_pose": place_retreat_pose,
+            "place_retreat_joints": tuple(float(value) for value in place_retreat_joints),
         }
-        self._log("pick_and_place_complete", {"label": request.label})
-        return result
+        self._log("compiled_grasp_plan", {"plan_id": plan.plan_id, "step_count": len(plan.steps)})
+        return plan, resolved
+
+    def validate_compiled_trajectory(
+        self,
+        plan: CompiledGraspPlan,
+        scene_context: Optional[Mapping[str, Any]] = None,
+    ) -> TrajectoryValidationReport:
+        def validate_joints(joints: Sequence[float], label: str) -> None:
+            self._check_joint_limits(joints, label)
+
+        def solve_path_ik(target: Dict[str, float], reference: Sequence[float]) -> Sequence[float]:
+            joints = self.solve_ik(target, reference)
+            self._check_singularity_risk(joints, "movel_intermediate_ik")
+            return joints
+
+        def validate_workspace(target: Any, label: str) -> None:
+            self.config.workspace.assert_contains(Pose3D(target.x, target.y, target.z), label)
+
+        report = sample_compiled_trajectory(
+            plan,
+            ik_solver=solve_path_ik,
+            joint_validator=validate_joints,
+            workspace_validator=validate_workspace,
+        )
+        if report.kinematic_status == "pass":
+            collision_validation = validate_model_collision(
+                plan,
+                report.samples,
+                scene_context=scene_context,
+            )
+            report = report.with_collision_validation(collision_validation)
+        self._log(
+            "trajectory_validation",
+            {
+                "plan_id": plan.plan_id,
+                "report_id": report.report_id,
+                "kinematic_status": report.kinematic_status,
+                "collision_status": report.collision_status,
+                "collision_report_id": (
+                    report.collision_validation.report_id if report.collision_validation else None
+                ),
+                "sample_count": len(report.samples),
+            },
+        )
+        return report
+
+    def execute_compiled_plan(
+        self,
+        plan: CompiledGraspPlan,
+        trajectory_validation: Optional[TrajectoryValidationReport] = None,
+    ) -> Dict[str, Any]:
+        """校验并逐条消费已经编译的计划，不重新求解任何目标。"""
+        if plan.plan_id != plan.expected_plan_id():
+            raise ValueError("统一抓取计划哈希校验失败。")
+        plan.assert_not_expired()
+        if trajectory_validation is not None:
+            if trajectory_validation.plan_id != plan.plan_id:
+                raise ValueError("轨迹验证报告与统一抓取计划不匹配。")
+            if trajectory_validation.report_id != trajectory_validation.expected_report_id():
+                raise ValueError("轨迹验证报告哈希校验失败。")
+            if trajectory_validation.kinematic_status != "pass":
+                raise PermissionError("连续轨迹没有通过运动学验证，拒绝执行。")
+            if trajectory_validation.collision_status == "collision":
+                raise PermissionError("近似几何碰撞检查检测到相交，拒绝执行。")
+        current_joints = self.get_actual_joint_pose()
+        max_start_delta = max(
+            abs(float(current) - float(expected))
+            for current, expected in zip(current_joints, plan.start_joints_rad)
+        )
+        if max_start_delta > self.config.compiled_plan_start_tolerance_rad:
+            raise PermissionError(
+                "机械臂当前关节位置与统一计划起点不一致，拒绝执行。"
+                f" max_start_delta={max_start_delta:.4f}rad"
+            )
+        for step in plan.steps:
+            if step.target_joints_rad is not None:
+                self._check_joint_limits(step.target_joints_rad, step.step_id)
+            if step.target_tcp is not None:
+                self.config.workspace.assert_contains(
+                    Pose3D(step.target_tcp.x, step.target_tcp.y, step.target_tcp.z),
+                    step.step_id,
+                )
+
+        for step in plan.steps:
+            if step.action == "gripper_open":
+                self.open_gripper()
+            elif step.action == "gripper_close":
+                self.close_gripper()
+            elif step.action == "movej":
+                assert step.target_joints_rad is not None
+                self.move_joint(step.target_joints_rad)
+            elif step.action == "movel":
+                assert step.target_tcp is not None
+                self.move_linear(step.target_tcp.to_dict())
+        return {
+            "success": True,
+            "plan_id": plan.plan_id,
+            "compiled_plan": plan.to_dict(),
+            "trajectory_validation": trajectory_validation.to_dict() if trajectory_validation else None,
+            "command_log": self.command_log,
+        }
 
     def safety_probe(self, request: SafetyProbeRequest) -> Dict[str, Any]:
         target_pose, target_joints = self.resolve_grasp_pose(request.target_pose, "probe_target")
